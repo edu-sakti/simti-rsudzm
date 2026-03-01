@@ -1,0 +1,70 @@
+@extends('layouts.app')
+
+@section('title', 'Daftar Ruangan')
+
+@section('content')
+<h1 class="page-title mb-4">Daftar Ruangan</h1>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card shadow-sm table-card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Tabel Ruangan</h5>
+        <a href="{{ route('rooms.create') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+          <i data-feather="plus"></i>
+          <span>Tambah Ruangan</span>
+        </a>
+      </div>
+      <div class="card-body">
+        <form method="GET" action="{{ route('rooms.index') }}" class="mb-3">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <input type="text" name="q" value="{{ request('q') }}" class="form-control search-rounded" placeholder="Cari Data">
+            </div>
+          </div>
+        </form>
+
+        <div class="table-responsive">
+          <table class="table table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th class="col-no">No</th>
+                <th class="col-code">Kode Ruangan</th>
+                <th class="d-flex align-items-center gap-2">
+  <span>Kategori</span>
+
+  <div class="dropdown">
+    <a class="text-secondary text-decoration-none fw-bold"
+       href="#"
+       role="button"
+       id="statusMenu"
+       data-bs-toggle="dropdown"
+       aria-expanded="false"
+       style="letter-spacing:1px;">
+      ⇅
+    </a>
+
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="statusMenu">
+      <li>
+        <a class="dropdown-item" href="{{ route('ruangan.index') }}">
+          Semua
+        </a>
+      </li>
+
+      <li>
+        <a class="dropdown-item"
+           href="{{ route('ruangan.index', array_merge(request()->except('page'), ['kategori' => 'administrasi'])) }}">
+          Aktif
+        </a>
+      </li>
+
+      <li>
+        <a class="dropdown-item"
+           href="{{ route('cctv.index', array_merge(request()->except('page'), ['status' => 'non_aktif'])) }}">
+          Non Aktif
+        </a>
+      </li>
+    </ul>
+  </div>
+</th>
+

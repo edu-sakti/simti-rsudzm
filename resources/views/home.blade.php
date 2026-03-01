@@ -13,8 +13,8 @@
     <h1><span>SIMTI</span> RSUDZM</h1>
 
     <p>
-        <strong>Sistem Informasi Manajemen Tim IT</strong><br>
-        <strong>UPTD RSUD dr. Zubir Mahmud</strong><br>
+        <strong>Sistem Informasi Manajemen Teknologi Informasi</strong><br>
+        <strong>UPTD RSUD dr. Zubir Mahmud Idi</strong><br>
     </p>
 
 @auth

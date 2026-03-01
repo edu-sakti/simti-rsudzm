@@ -14,8 +14,8 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Admin SIMTI',
                 'username' => 'admin',
-                'email' => 'admin@simti-rs.net',
                 'role' => 'admin',
+                'email' => 'admin@simti.net',
                 'password' => Hash::make('admin123'), 
                 'created_at' => now(),
                 'updated_at' => now(),

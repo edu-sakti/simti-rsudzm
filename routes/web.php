@@ -4,11 +4,16 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Contracts\Encryption\DecryptException;
+use App\Http\Controllers\DeviceController;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Room;
+use App\Models\Cctv;
+use App\Models\IpAddr;
+use App\Models\Device;
+use App\Models\DeviceSpec;
 
 Route::get('/', function () {
     return view('home');
@@ -140,19 +145,30 @@ Route::delete('/pengguna/{encoded}', function (string $encoded) {
 })->name('users.destroy')->middleware('auth');
 
 // ---------------- Ruangan ----------------
-Route::get('/ruangan', function (Request $request) {
+Route::get('/ruangan', function (Request $request) use ($roomCategories) {
     $search = $request->query('q');
+    $kategori = $request->query('kategori');
     $rooms = Room::query()
         ->when($search, function ($query, $search) {
             $query->where('room_id', 'like', "%{$search}%")
                   ->orWhere('name', 'like', "%{$search}%")
                   ->orWhere('kategori', 'like', "%{$search}%");
         })
+        ->when($kategori, function ($query, $kategori) {
+            $query->where('kategori', $kategori);
+        })
         ->orderBy('room_id')
         ->paginate(20)
         ->withQueryString();
 
-    return view('ruangan.ruangan', compact('rooms', 'search'));
+    $categories = array_keys($roomCategories);
+
+    return view('ruangan.ruangan', [
+        'rooms' => $rooms,
+        'search' => $search,
+        'selectedKategori' => $kategori,
+        'categories' => $categories,
+    ]);
 })->name('rooms.index')->middleware('auth');
 
 Route::get('/ruangan/tambah', function () use ($roomCategories) {
@@ -227,6 +243,331 @@ Route::delete('/ruangan/{encoded}', function (string $encoded) {
 
     return redirect()->route('rooms.index')->with('success', 'Ruangan berhasil dihapus.');
 })->name('rooms.destroy')->middleware('auth');
+
+// ---------------- CCTV ----------------
+Route::get('/cctv', function (Request $request) {
+    $status = $request->query('status');
+    $q = $request->query('q');
+
+    $cctvs = Cctv::with('room')
+        ->when($status, function ($query, $status) {
+            $query->where('status', $status);
+        })
+        ->when($q, function ($query, $q) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('ip', 'like', "%{$q}%")
+                    ->orWhere('keterangan', 'like', "%{$q}%")
+                    ->orWhereHas('room', function ($r) use ($q) {
+                        $r->where('name', 'like', "%{$q}%")
+                          ->orWhere('room_id', 'like', "%{$q}%");
+                    });
+            });
+        })
+        ->orderBy('id')
+        ->paginate(20)
+        ->withQueryString();
+
+    return view('cctv.cctv', compact('cctvs', 'status', 'q'));
+})->name('cctv.index')->middleware('auth');
+
+Route::get('/cctv/tambah', function () {
+    $rooms = Room::orderBy('room_id')->get(['room_id', 'name']);
+    return view('cctv.addcctv', ['rooms' => $rooms]);
+})->name('cctv.create')->middleware('auth');
+
+Route::post('/cctv/tambah', function (Request $request) {
+    $data = $request->validate([
+        'lokasi' => ['required', 'string', Rule::exists('rooms', 'room_id')],
+        'status' => ['required', Rule::in(['aktif', 'non_aktif'])],
+        'keterangan' => ['nullable', 'string'],
+        'ip' => ['required', 'ip'],
+    ]);
+
+    Cctv::create([
+        'room_id' => $data['lokasi'],
+        'status' => $data['status'],
+        'keterangan' => $data['keterangan'] ?? null,
+        'ip' => $data['ip'],
+    ]);
+
+    return redirect()->route('cctv.index')->with('success', 'CCTV berhasil ditambahkan.');
+})->name('cctv.store')->middleware('auth');
+
+Route::get('/cctv/{encoded}/edit', function (string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $cctv = Cctv::findOrFail($id);
+    $rooms = Room::orderBy('name')->get(['room_id', 'name']);
+    return view('cctv.editcctv', compact('cctv', 'rooms'));
+})->name('cctv.edit')->middleware('auth');
+
+Route::put('/cctv/{encoded}', function (Request $request, string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $cctv = Cctv::findOrFail($id);
+    $data = $request->validate([
+        'lokasi' => ['required', 'string', Rule::exists('rooms', 'room_id')],
+        'status' => ['required', Rule::in(['aktif', 'non_aktif'])],
+        'keterangan' => ['nullable', 'string'],
+        'ip' => ['required', 'ip'],
+    ]);
+
+    $cctv->update([
+        'room_id' => $data['lokasi'],
+        'status' => $data['status'],
+        'keterangan' => $data['keterangan'] ?? null,
+        'ip' => $data['ip'],
+    ]);
+
+    return redirect()->route('cctv.index')->with('success', 'CCTV berhasil diperbarui.');
+})->name('cctv.update')->middleware('auth');
+
+Route::delete('/cctv/{encoded}', function (string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $cctv = Cctv::findOrFail($id);
+    $cctv->delete();
+    return redirect()->route('cctv.index')->with('success', 'CCTV berhasil dihapus.');
+})->name('cctv.destroy')->middleware('auth');
+
+// ---------------- ISP ----------------
+Route::get('/isp', function () {
+    return view('isp.isp');
+})->name('isp.index')->middleware('auth');
+
+// ---------------- Helpdesk ----------------
+Route::get('/helpdesk', function () {
+    return view('helpdesk.helpdesk');
+})->name('helpdesk.index')->middleware('auth');
+
+// ---------------- Laporan ----------------
+Route::get('/laporan', function () {
+    return view('laporan.laporan');
+})->name('laporan.index')->middleware('auth');
+
+// ---------------- IP Address ----------------
+Route::get('/ip-address', function (Request $request) {
+    $status = $request->query('status');
+    $q = $request->query('q');
+
+    $ipAddrs = IpAddr::query()
+        ->when($status, fn($q2) => $q2->where('status', $status))
+        ->when($q, function ($query) use ($q) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('ip_address', 'like', "%{$q}%")
+                    ->orWhere('subnet', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%");
+            });
+        })
+        ->orderBy('ip_address')
+        ->paginate(20)
+        ->withQueryString();
+
+    return view('ipaddress.ipaddr', compact('ipAddrs', 'status', 'q'));
+})->name('ipaddr.index')->middleware('auth');
+
+Route::get('/ip-address/tambah', function () {
+    return view('ipaddress.addipaddress');
+})->name('ipaddr.create')->middleware('auth');
+
+Route::post('/ip-address/tambah', function (Request $request) {
+    $data = $request->validate([
+        'ip_address' => ['required', 'ip', 'unique:ip_addrs,ip_address'],
+        'subnet' => ['nullable', 'ipv4'],
+        'status' => ['required', Rule::in(['available', 'used'])],
+        'description' => ['nullable', 'string'],
+    ], [
+        'ip_address.required' => 'IP address wajib diisi.',
+        'ip_address.ip' => 'IP address harus berupa alamat IP yang valid.',
+        'ip_address.unique' => 'IP address sudah digunakan.',
+        'subnet.ipv4' => 'Subnet harus berupa alamat IPv4 yang valid.',
+        'status.required' => 'Status wajib dipilih.',
+        'status.in' => 'Status harus Available atau Used.',
+    ]);
+
+    IpAddr::create($data);
+
+    return redirect()->route('ipaddr.index')->with('success', 'IP Address berhasil ditambahkan.');
+})->name('ipaddr.store')->middleware('auth');
+
+Route::delete('/ip-address/{encoded}', function (string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $ip = IpAddr::findOrFail($id);
+    $ip->delete();
+    return redirect()->route('ipaddr.index')->with('success', 'IP Address berhasil dihapus.');
+})->name('ipaddr.destroy')->middleware('auth');
+
+Route::get('/ip-address/{encoded}/edit', function (string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $ip = IpAddr::findOrFail($id);
+    return view('ipaddress.editipaddress', compact('ip'));
+})->name('ipaddr.edit')->middleware('auth');
+
+Route::put('/ip-address/{encoded}', function (Request $request, string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $ip = IpAddr::findOrFail($id);
+    $data = $request->validate([
+        'ip_address' => ['required', 'ip', Rule::unique('ip_addrs', 'ip_address')->ignore($ip->id)],
+        'subnet' => ['nullable', 'ipv4'],
+        'status' => ['required', Rule::in(['available', 'used'])],
+        'description' => ['nullable', 'string'],
+    ], [
+        'ip_address.required' => 'IP address wajib diisi.',
+        'ip_address.ip' => 'IP address harus berupa alamat IP yang valid.',
+        'ip_address.unique' => 'IP address sudah digunakan.',
+        'subnet.ipv4' => 'Subnet harus berupa alamat IPv4 yang valid.',
+        'status.required' => 'Status wajib dipilih.',
+        'status.in' => 'Status harus Available atau Used.',
+    ]);
+
+    $ip->update($data);
+
+    return redirect()->route('ipaddr.index')->with('success', 'IP Address berhasil diperbarui.');
+})->name('ipaddr.update')->middleware('auth');
+
+// ---------------- Devices ----------------
+Route::get('/perangkat', [DeviceController::class, 'index'])->name('device.index')->middleware('auth');
+Route::get('/perangkat/tambah-perangkat', [DeviceController::class, 'create'])->name('device.create')->middleware('auth');
+Route::post('/perangkat/tambah-perangkat', [DeviceController::class, 'store'])->name('device.store')->middleware('auth');
+Route::delete('/perangkat/{device}', [DeviceController::class, 'destroy'])->name('device.destroy')->middleware('auth');
+
+Route::get('/perangkat/{encoded}/edit-perangkat', function (string $encoded) {
+    try {
+        $deviceId = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $deviceTypes = [
+        'CPU','Monitor','PC AIO','Laptop','Router','Hub','Printer',
+    ];
+    $device = Device::findOrFail($deviceId);
+    $rooms = Room::orderBy('room_id')->get(['room_id','name']);
+    return view('devices.editdevice', compact('device','rooms','deviceTypes','encoded'));
+})->name('device.edit')->middleware('auth');
+
+Route::put('/perangkat/{encoded}/edit-perangkat', function (Request $request, string $encoded) {
+    try {
+        $deviceId = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $deviceTypes = ['CPU','Monitor','PC AIO','Laptop','Router','Hub','Printer'];
+    $data = $request->validate([
+        'device_name' => ['required', 'string', 'max:255'],
+        'room_id' => ['nullable', 'string', 'max:20', 'exists:rooms,room_id'],
+        'device_type' => ['required', 'string', Rule::in($deviceTypes)],
+        'brand' => ['nullable', 'string', 'max:255'],
+        'model' => ['nullable', 'string', 'max:255'],
+        'condition' => ['nullable', 'string', Rule::in(['Good','Damage','Maintenance'])],
+        'status' => ['nullable', 'string', Rule::in(['Active','Inactive'])],
+        'notes' => ['nullable', 'string'],
+    ]);
+    $device = Device::findOrFail($deviceId);
+    $device->update($data);
+    return redirect()->route('device.index')->with('success','Perangkat berhasil diperbarui.');
+})->name('device.update')->middleware('auth');
+
+Route::get('/perangkat/spesifikasi-perangkat', function () {
+    $usedIds = DeviceSpec::pluck('device_id')->all();
+    $devices = Device::whereIn('device_type', ['CPU','PC AIO','Laptop'])
+        ->whereNotIn('id', $usedIds)
+        ->orderBy('device_name')
+        ->get(['id','device_name','device_type']);
+    $ramOptions = ['4 GB','8 GB','16 GB','32 GB','64 GB'];
+    $capacityOptions = ['128 GB','256 GB','512 GB','1 TB','2 TB'];
+    return view('devices.specdevice', compact('devices','ramOptions','capacityOptions'));
+})->name('device.spec.form')->middleware('auth');
+
+Route::get('/perangkat/spesifikasi-perangkat/{device}', function (Device $device) {
+    $usedIds = DeviceSpec::pluck('device_id')->all();
+    $devices = Device::whereIn('device_type', ['CPU','PC AIO','Laptop'])
+        ->where(function($q) use ($usedIds, $device) {
+            $q->whereNotIn('id', $usedIds)->orWhere('id', $device->id);
+        })
+        ->orderBy('device_name')
+        ->get(['id','device_name','device_type']);
+    $ramOptions = ['4 GB','8 GB','16 GB','32 GB','64 GB'];
+    $capacityOptions = ['128 GB','256 GB','512 GB','1 TB','2 TB'];
+    $device->load('spec');
+    return view('devices.specdevice', [
+        'devices' => $devices,
+        'ramOptions' => $ramOptions,
+        'capacityOptions' => $capacityOptions,
+        'editDevice' => $device,
+    ]);
+})->name('device.spec.edit')->middleware('auth');
+
+Route::post('/perangkat/spesifikasi-perangkat', function (Request $request) {
+    $ramOptions = ['4 GB','8 GB','16 GB','32 GB','64 GB'];
+    $capacityOptions = ['128 GB','256 GB','512 GB','1 TB','2 TB'];
+    $data = $request->validate([
+        'device_id' => ['required','exists:devices,id'],
+        'processor' => ['required','string','max:255'],
+        'ram' => ['required', Rule::in($ramOptions)],
+        'storage_type' => ['required', Rule::in(['HDD','SSD'])],
+        'storage_capacity' => ['required', Rule::in($capacityOptions)],
+        'gpu' => ['nullable','string','max:255'],
+        'os' => ['required','string','max:255'],
+        'details' => ['nullable','string'],
+    ]);
+
+    DeviceSpec::updateOrCreate(
+        ['device_id' => $data['device_id']],
+        collect($data)->except('device_id')->toArray()
+    );
+
+    return redirect()->route('device.index')->with('success','Spesifikasi perangkat berhasil disimpan.');
+})->name('device.spec.save')->middleware('auth');
+Route::post('/perangkat/{device}/spec', function (Request $request, Device $device) {
+    $ramOptions = ['4 GB','8 GB','16 GB','32 GB','64 GB'];
+    $capacityOptions = ['128 GB','256 GB','512 GB','1 TB','2 TB'];
+
+    $data = $request->validate([
+        'processor' => ['required', 'string', 'max:255'],
+        'ram' => ['required', Rule::in($ramOptions)],
+        'storage_type' => ['required', Rule::in(['HDD','SSD'])],
+        'storage_capacity' => ['required', Rule::in($capacityOptions)],
+        'gpu' => ['nullable', 'string', 'max:255'],
+        'os' => ['required', 'string', 'max:255'],
+        'details' => ['nullable', 'string'],
+    ]);
+
+    DeviceSpec::updateOrCreate(
+        ['device_id' => $device->id],
+        $data
+    );
+
+    if ($request->expectsJson()) {
+        return response()->json(['message' => 'Spesifikasi tersimpan.']);
+    }
+    return redirect()->back()->with('success', 'Spesifikasi tersimpan.');
+})->name('device.spec.store')->middleware('auth');
+
+Route::delete('/perangkat/spesifikasi-perangkat/{device}', function (Device $device) {
+    DeviceSpec::where('device_id', $device->id)->delete();
+    return redirect()->route('device.index')->with('success', 'Spesifikasi perangkat berhasil dihapus.');
+})->name('device.spec.delete')->middleware('auth');
 
 // ---------------- Lainnya ----------------
 Route::get('/profile', function () {

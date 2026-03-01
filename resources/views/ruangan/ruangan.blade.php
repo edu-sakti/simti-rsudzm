@@ -17,8 +17,10 @@
       </div>
       <div class="card-body">
         <form method="GET" action="{{ route('rooms.index') }}" class="mb-3">
-          <div class="col-md-4 px-0">
-            <input type="text" name="q" value="{{ request('q') }}" class="form-control search-rounded" placeholder="Cari Data">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <input type="text" name="q" value="{{ request('q') }}" class="form-control search-rounded" placeholder="Cari Data">
+            </div>
           </div>
         </form>
 
@@ -28,8 +30,37 @@
               <tr>
                 <th class="col-no">No</th>
                 <th class="col-code">Kode Ruangan</th>
-                <th class="col-kategori">Kategori</th>
-                <th class="col-nama">Nama</th>
+                <th class="d-flex align-items-center gap-2">
+                  <span>Kategori</span>
+                  <div class="dropdown">
+                    <a class="text-secondary text-decoration-none fw-bold"
+                       href="#"
+                       role="button"
+                       id="kategoriMenu"
+                       data-bs-toggle="dropdown"
+                       aria-expanded="false"
+                       style="letter-spacing:1px;">
+                      ⇅
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="kategoriMenu">
+                      <li>
+                        <a class="dropdown-item" href="{{ route('rooms.index', request()->except('kategori','page')) }}">
+                          Semua
+                        </a>
+                      </li>
+                      @foreach($categories ?? [] as $cat)
+                        <li>
+                          <a class="dropdown-item"
+                             href="{{ route('rooms.index', array_merge(request()->except('page'), ['kategori' => $cat])) }}">
+                            {{ $cat }}
+                          </a>
+                        </li>
+                      @endforeach
+                    </ul>
+                  </div>
+                </th>
+
+                <th class="col-nama">Nama Ruangan</th>
                 <th class="col-aksi">Aksi</th>
               </tr>
             </thead>
@@ -119,3 +150,7 @@
   })();
 </script>
 @endsection
+
+
+
+

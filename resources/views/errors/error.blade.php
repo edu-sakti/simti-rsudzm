@@ -7,23 +7,33 @@
   <style>
     body {
       margin: 0;
-      height: 100vh;
+      min-height: 100vh;
       background-color: #222e3c;
       color: #00ff55;
       font-family: "Courier New", Courier, monospace;
       display: flex;
       justify-content: center;
       align-items: center;
+      padding: 16px;
+      box-sizing: border-box;
     }
     .terminal {
-      font-size: 18px;
+      font-size: clamp(14px, 2vw, 18px);
       color: #00ff55;
-      white-space: pre;
+      white-space: pre-wrap;
+      word-break: break-word;
       line-height: 1.6;
       text-align: left;
-      padding: 20px 40px;
+      padding: clamp(16px, 4vw, 24px) clamp(24px, 5vw, 40px);
       border-left: 4px solid #00ff55;
       box-shadow: inset 0 0 20px rgba(0,255,85,0.15);
+      max-width: 960px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: auto;
+      border-radius: 10px;
+      box-sizing: border-box;
+      background: rgba(0,0,0,0.15);
     }
     .prompt { color: #00cc44; margin-right: 8px; }
     .cursor {

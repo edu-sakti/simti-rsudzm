@@ -13,10 +13,17 @@
 				</a>
 			</li>
 
-			<li class="sidebar-item {{ request()->is('intranet') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('intranet') }}">
-					<i class="align-middle" data-feather="share-2"></i>
-					<span class="align-middle">Intranet</span>
+			<li class="sidebar-item {{ request()->is('ip-address') ? 'active' : '' }}">
+				<a class="sidebar-link" href="{{ route('ipaddr.index') }}">
+					<i class="align-middle" data-feather="map-pin"></i>
+					<span class="align-middle">IP Address</span>
+				</a>
+			</li>
+
+			<li class="sidebar-item {{ request()->is('perangkat') ? 'active' : '' }}">
+				<a class="sidebar-link" href="{{ route('device.index') }}">
+					<i class="align-middle" data-feather="server"></i>
+					<span class="align-middle">Perangkat</span>
 				</a>
 			</li>
 
@@ -27,12 +34,6 @@
 				</a>
 			</li>
 
-			<li class="sidebar-item {{ request()->is('perangkat') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('perangkat') }}">
-					<i class="align-middle" data-feather="server"></i>
-					<span class="align-middle">Perangkat</span>
-				</a>
-			</li>
 
 			<li class="sidebar-item {{ request()->is('cctv') ? 'active' : '' }}">
 				<a class="sidebar-link" href="{{ url('cctv') }}">
@@ -41,10 +42,14 @@
 				</a>
 			</li>
 
-			<li class="sidebar-item {{ request()->is('laporan') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('laporan') }}">
-					<i class="align-middle" data-feather="clipboard"></i>
-					<span class="align-middle">Laporan</span>
+
+
+			
+
+			<li class="sidebar-item {{ request()->is('ruangan*') ? 'active' : '' }}">
+				<a class="sidebar-link" href="{{ url('/ruangan') }}">
+					<i class="align-middle" data-feather="layout"></i>
+					<span class="align-middle">Ruangan</span>
 				</a>
 			</li>
 
@@ -54,18 +59,18 @@
 					<span class="align-middle">Pengguna</span>
 				</a>
 			</li>
-
-			<li class="sidebar-item {{ request()->is('ruangan*') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('/ruangan') }}">
-					<i class="align-middle" data-feather="layout"></i>
-					<span class="align-middle">Ruangan</span>
+			
+			<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
+				<a class="sidebar-link" href="{{ url('/helpdesk') }}">
+					<i class="align-middle" data-feather="message-circle"></i>
+					<span class="align-middle">Helpdesk</span>
 				</a>
 			</li>
 
-			<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('/helpdesk') }}">
-					<i class="align-middle" data-feather="life-buoy"></i>
-					<span class="align-middle">Helpdesk</span>
+			<li class="sidebar-item {{ request()->is('laporan') ? 'active' : '' }}">
+				<a class="sidebar-link" href="{{ url('laporan') }}">
+					<i class="align-middle" data-feather="clipboard"></i>
+					<span class="align-middle">Laporan</span>
 				</a>
 			</li>
 
