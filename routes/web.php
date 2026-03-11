@@ -8,6 +8,7 @@ use App\Http\Controllers\DeviceController;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Room;
 use App\Models\Cctv;
@@ -301,7 +302,11 @@ Route::get('/cctv/{encoded}/edit', function (string $encoded) {
     }
     $cctv = Cctv::findOrFail($id);
     $rooms = Room::orderBy('name')->get(['room_id', 'name']);
-    return view('cctv.editcctv', compact('cctv', 'rooms'));
+    return view('cctv.editcctv', [
+        'cctv' => $cctv,
+        'rooms' => $rooms,
+        'encoded' => $encoded,
+    ]);
 })->name('cctv.edit')->middleware('auth');
 
 Route::put('/cctv/{encoded}', function (Request $request, string $encoded) {
@@ -341,8 +346,94 @@ Route::delete('/cctv/{encoded}', function (string $encoded) {
 
 // ---------------- ISP ----------------
 Route::get('/isp', function () {
-    return view('isp.isp');
+    $isps = DB::table('isps')
+        ->leftJoin('rooms', 'isps.ruang_installasi', '=', 'rooms.id')
+        ->select('isps.*', 'rooms.name as room_name', 'rooms.room_id as room_code')
+        ->orderBy('isps.nama_isp')
+        ->get();
+    return view('isp.isp', compact('isps'));
 })->name('isp.index')->middleware('auth');
+
+Route::get('/isp/tambah', function () {
+    $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
+    return view('isp.addisp', compact('rooms'));
+})->name('isp.create')->middleware('auth');
+
+Route::post('/isp/tambah', function (Request $request) {
+    $data = $request->validate([
+        'nama_isp' => ['required', 'string', 'max:255'],
+        'jenis_koneksi' => ['required', Rule::in(['fiber','radio'])],
+        'bandwidth' => ['required', 'string', 'max:50', 'regex:/^\d+\s?(Mbps|Gbps)$/i'],
+        'ip_address' => ['required', 'ip'],
+        'ruang_installasi' => ['required', 'integer', 'exists:rooms,id'],
+        'pic_isp' => ['required', 'string', 'max:255'],
+        'no_telepon' => ['required', 'string', 'regex:/^\d{8,15}$/'],
+        'status' => ['required', Rule::in(['aktif','backup'])],
+        'keterangan' => ['nullable', 'string'],
+    ], [
+        'bandwidth.regex' => 'Bandwidth harus berupa angka dengan satuan Mbps atau Gbps. Contoh: 100 Mbps.',
+        'no_telepon.regex' => 'No telepon harus berupa angka 8-15 digit.',
+    ]);
+
+    DB::table('isps')->insert(array_merge($data, [
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]));
+
+    return redirect()->route('isp.index')->with('success', 'Data ISP berhasil ditambahkan.');
+})->name('isp.store')->middleware('auth');
+
+Route::get('/isp/{encoded}/edit', function (string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $isp = DB::table('isps')->where('id', $id)->first();
+    if (!$isp) {
+        abort(404);
+    }
+    $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
+    return view('isp.editisp', ['isp' => $isp, 'encoded' => $encoded, 'rooms' => $rooms]);
+})->name('isp.edit')->middleware('auth');
+
+Route::put('/isp/{encoded}', function (Request $request, string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $data = $request->validate([
+        'nama_isp' => ['required', 'string', 'max:255'],
+        'jenis_koneksi' => ['required', Rule::in(['fiber','radio'])],
+        'bandwidth' => ['required', 'string', 'max:50', 'regex:/^\d+\s?(Mbps|Gbps)$/i'],
+        'ip_address' => ['required', 'ip'],
+        'ruang_installasi' => ['required', 'integer', 'exists:rooms,id'],
+        'pic_isp' => ['required', 'string', 'max:255'],
+        'no_telepon' => ['required', 'string', 'regex:/^\d{8,15}$/'],
+        'status' => ['required', Rule::in(['aktif','backup'])],
+        'keterangan' => ['nullable', 'string'],
+    ], [
+        'bandwidth.regex' => 'Bandwidth harus berupa angka dengan satuan Mbps atau Gbps. Contoh: 100 Mbps.',
+        'no_telepon.regex' => 'No telepon harus berupa angka 8-15 digit.',
+    ]);
+
+    DB::table('isps')->where('id', $id)->update(array_merge($data, [
+        'updated_at' => now(),
+    ]));
+
+    return redirect()->route('isp.index')->with('success', 'Data ISP berhasil diperbarui.');
+})->name('isp.update')->middleware('auth');
+
+Route::delete('/isp/{encoded}', function (string $encoded) {
+    try {
+        $id = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    DB::table('isps')->where('id', $id)->delete();
+    return redirect()->route('isp.index')->with('success', 'Data ISP berhasil dihapus.');
+})->name('isp.destroy')->middleware('auth');
 
 // ---------------- Helpdesk ----------------
 Route::get('/helpdesk', function () {

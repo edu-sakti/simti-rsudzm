@@ -28,7 +28,7 @@
     </main>
 
 <footer class="py-3 mt-auto text-center" style="font-size: 14px; color: #555;">
-    &copy; Copyright {{ date('Y') }} - <a href="https://sontekan.com" class="text-reset text-decoration-none" target="_blank" rel="noopener"><strong>sontekan.com</strong></a> All Rights Reserved.
+    &copy; Copyright {{ date('Y') }} - <a href="https://edu-sakti.github.io/" class="text-reset text-decoration-none" target="_blank" rel="noopener"><strong>Edusakti</strong></a> All Rights Reserved.
 </footer>
 
     <script src="{{ asset('adminkit/js/app.js') }}"></script>

@@ -23,7 +23,7 @@
           </div>
         @endif
 
-        <form method="POST" action="{{ route('cctv.update', $cctv->id) }}">
+        <form method="POST" action="{{ route('cctv.update', $encoded) }}">
           @csrf
           @method('PUT')
 
