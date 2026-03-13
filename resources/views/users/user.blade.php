@@ -11,10 +11,16 @@
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">Tabel Pengguna</h5>
         {{-- Tombol Tambah Pengguna --}}
-        <a href="{{ url('/pengguna/tambah') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-          <i data-feather="user-plus"></i>
-          <span>Tambah Pengguna</span>
-        </a>
+        <div class="d-flex gap-2">
+          <a href="{{ url('/pengguna/tambah') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+            <i data-feather="user-plus"></i>
+            <span>Tambah</span>
+          </a>
+          <button type="button" id="btn-copy-invite" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+            <i data-feather="link"></i>
+            <span>Generate Form</span>
+          </button>
+        </div>
       </div>
 
       <div class="card-body">
@@ -32,7 +38,9 @@
                 <th style="width:60px">No</th>
                 <th>Nama</th>
                 <th>Username</th>
+                <th>No HP</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th style="width:160px">Aksi</th>
               </tr>
             </thead>
@@ -42,14 +50,43 @@
                   <td>{{ ($users->currentPage() - 1) * $users->perPage() + $index + 1 }}</td>
                   <td>{{ $user->name }}</td>
                   <td>{{ $user->username }}</td>
-                  <td><span class="badge bg-{{ $user->role === 'admin' ? 'primary' : 'secondary' }} text-uppercase">{{ $user->role }}</span></td>
+                  <td>{{ $user->phone ?? '-' }}</td>
+                  @php
+                    $roleLabelMap = [
+                      'admin' => ['label' => 'ADMIN', 'class' => 'primary'],
+                      'petugas' => ['label' => 'PETUGAS', 'class' => 'secondary'],
+                      'staff' => ['label' => 'PETUGAS', 'class' => 'secondary'],
+                      'manajemen' => ['label' => 'MANAJEMEN', 'class' => 'info'],
+                      'kepala_ruangan' => ['label' => 'KEPALA RUANGAN', 'class' => 'warning'],
+                    ];
+                    $roleMeta = $roleLabelMap[$user->role] ?? ['label' => strtoupper($user->role), 'class' => 'secondary'];
+                  @endphp
+                  <td>
+                    <span class="badge bg-{{ $roleMeta['class'] }} text-uppercase">{{ $roleMeta['label'] }}</span>
+                  </td>
+                  <td>
+                    @if($user->is_verified)
+                      <span class="badge bg-success">Tervalidasi</span>
+                    @else
+                      <span class="badge bg-warning text-dark">Belum Valid</span>
+                    @endif
+                  </td>
                   <td>
                     @php($encoded = encrypt($user->username))
                     <div class="d-flex gap-2">
                       {{-- Tombol Edit --}}
-                      <a href="{{ route('users.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">
-                        <i data-feather="edit-2"></i> Edit
-                      </a>
+                      @if($user->is_verified)
+                        <a href="{{ route('users.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">
+                          <i data-feather="edit-2"></i> Edit
+                        </a>
+                      @endif
+
+                      @if(!$user->is_verified && auth()->check() && auth()->user()->role === 'admin')
+                        <form method="POST" action="{{ route('users.verify', $encoded) }}" class="js-verify-form" data-username="{{ $user->username }}">
+                          @csrf
+                          <button type="submit" class="btn btn-sm btn-outline-primary">Validasi</button>
+                        </form>
+                      @endif
 
                       {{-- Tombol Hapus --}}
                       <form method="POST" action="{{ route('users.destroy', $encoded) }}" class="js-delete-form" data-username="{{ $user->username }}">
@@ -64,7 +101,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="5" class="text-center text-muted">Belum ada data pengguna.</td>
+                  <td colspan="6" class="text-center text-muted">Belum ada data pengguna.</td>
                 </tr>
               @endforelse
             </tbody>
@@ -121,6 +158,66 @@
           confirmButtonColor: '#d33', // merah untuk hapus
           cancelButtonColor: '#6c757d',
           confirmButtonText: 'Hapus',
+          cancelButtonText: 'Batal'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      });
+    });
+  })();
+
+  (function () {
+    const btn = document.getElementById('btn-copy-invite');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      try {
+        const res = await fetch("{{ route('users.invite') }}", {
+          headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        const link = data.link || '';
+        if (!link) throw new Error('Link kosong');
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(link);
+        } else {
+          const temp = document.createElement('textarea');
+          temp.value = link;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          temp.remove();
+        }
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Link berhasil disalin.' });
+        }
+      } catch (e) {
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyalin link.' });
+        }
+      }
+    });
+  })();
+
+  (function () {
+    const forms = document.querySelectorAll('form.js-verify-form');
+    forms.forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const username = form.getAttribute('data-username') || '';
+        if (typeof Swal === 'undefined') {
+          form.submit();
+          return;
+        }
+        Swal.fire({
+          title: 'Validasi Pengguna?',
+          text: `Apakah kamu yakin memvalidasi user ${username}?`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#0d6efd',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Validasi',
           cancelButtonText: 'Batal'
         }).then((result) => {
           if (result.isConfirmed) {

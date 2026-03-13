@@ -9,6 +9,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use App\Models\Room;
 use App\Models\Cctv;
@@ -70,26 +72,114 @@ Route::get('/pengguna', function (Request $request) {
     return view('users.user', compact('users', 'search'));
 })->name('users.index')->middleware('auth');
 
+Route::get('/pengguna/tambah-link', function () {
+    $code = bin2hex(random_bytes(16));
+    Cache::put('user_invite_' . $code, true, now()->addMinutes(15));
+    $link = url('/pengguna/tambah/' . $code);
+    if (request()->expectsJson()) {
+        return response()->json(['link' => $link]);
+    }
+    return redirect()->to($link);
+})->name('users.invite')->middleware('auth');
+
 Route::get('/pengguna/tambah', function () {
-    return view('users.adduser');
+    $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
+    return view('users.adduser', compact('rooms'));
 })->name('users.create')->middleware('auth');
+
+Route::get('/pengguna/tambah/{kode}', function (string $kode) {
+    if (!Cache::get('user_invite_' . $kode)) {
+        abort(403);
+    }
+    $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
+    return view('users.adduser', ['rooms' => $rooms, 'invite_code' => $kode]);
+})->name('users.create.invite');
+
+Route::post('/pengguna/otp', function (Request $request) {
+    $data = $request->validate([
+        'phone' => ['required', 'regex:/^62\d{8,15}$/'],
+        'invite_code' => ['nullable', 'string'],
+    ], [
+        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
+    ]);
+    if (!Auth::check()) {
+        if (empty($data['invite_code']) || !Cache::get('user_invite_' . $data['invite_code'])) {
+            return response()->json(['message' => 'Akses tidak valid.'], 403);
+        }
+    }
+
+    $length = (int) (env('OTP_LENGTH') ?: 6);
+    $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
+
+    $message = "Kode OTP SIMTI RSUDZM: {$code}. Berlaku 5 menit.";
+    $response = Http::withHeaders([
+        'Authorization' => env('FONNTE_TOKEN'),
+    ])->post(env('FONNTE_URL'), [
+        'target' => $data['phone'],
+        'message' => $message,
+    ]);
+
+    if (!$response->successful()) {
+        return response()->json(['message' => 'Gagal mengirim OTP.'], 500);
+    }
+
+    $request->session()->put([
+        'otp_code' => $code,
+        'otp_phone' => $data['phone'],
+        'otp_expires' => now()->addMinutes(5)->timestamp,
+    ]);
+
+    return response()->json(['message' => 'OTP berhasil dikirim.']);
+})->name('users.otp');
 
 Route::post('/pengguna', function (Request $request) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:admin,staff'],
+        'role' => ['required', 'in:admin,petugas,manajemen,kepala_ruangan,staff'],
+        'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
+        'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
+        'otp_code' => ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)],
         'password' => ['required', 'string', 'min:8'],
+    ], [
+        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
+        'phone.unique' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin',
+        'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
+    $sessionCode = $request->session()->get('otp_code');
+    $sessionPhone = $request->session()->get('otp_phone');
+    $sessionExpires = $request->session()->get('otp_expires');
+    if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
+        return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
+    }
+    if ((int) $sessionExpires < now()->timestamp) {
+        return back()->withErrors(['otp_code' => 'Kode OTP sudah kadaluarsa.'])->withInput();
+    }
+    if ($sessionPhone !== $data['phone']) {
+        return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
+    }
+    if ($sessionCode !== $data['otp_code']) {
+        return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
+    }
+
+    if ($data['role'] === 'staff') {
+        $data['role'] = 'petugas';
+    }
+    if ($data['role'] !== 'kepala_ruangan') {
+        $data['room_id'] = null;
+    }
+
+    unset($data['otp_code']);
+    $data['is_verified'] = false;
     $user = new User($data);
 
     if (Schema::hasColumn('users', 'email')) {
         $base = strtolower(preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $data['username']));
-        $email = $base . '@example.local';
+        $email = $base . '@simti.xyz';
         $i = 1;
         while (User::where('email', $email)->exists()) {
-            $email = $base . "+$i@example.local";
+            $email = $base . "+$i@simti.xyz";
             $i++;
         }
         $user->email = $email;
@@ -97,8 +187,72 @@ Route::post('/pengguna', function (Request $request) {
 
     $user->save();
 
+    $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
 })->name('users.store')->middleware('auth');
+
+Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode) {
+    if (!Cache::get('user_invite_' . $kode)) {
+        abort(403);
+    }
+    $request->merge(['invite_code' => $kode]);
+    $data = $request->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
+        'role' => ['required', 'in:admin,petugas,manajemen,kepala_ruangan,staff'],
+        'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
+        'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
+        'otp_code' => ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)],
+        'password' => ['required', 'string', 'min:8'],
+        'invite_code' => ['required', 'string'],
+    ], [
+        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
+        'phone.unique' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin',
+        'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
+    ]);
+
+    $sessionCode = $request->session()->get('otp_code');
+    $sessionPhone = $request->session()->get('otp_phone');
+    $sessionExpires = $request->session()->get('otp_expires');
+    if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
+        return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
+    }
+    if ((int) $sessionExpires < now()->timestamp) {
+        return back()->withErrors(['otp_code' => 'Kode OTP sudah kadaluarsa.'])->withInput();
+    }
+    if ($sessionPhone !== $data['phone']) {
+        return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
+    }
+    if ($sessionCode !== $data['otp_code']) {
+        return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
+    }
+
+    if ($data['role'] === 'staff') {
+        $data['role'] = 'petugas';
+    }
+    if ($data['role'] !== 'kepala_ruangan') {
+        $data['room_id'] = null;
+    }
+
+    unset($data['otp_code'], $data['invite_code']);
+    $data['is_verified'] = false;
+    $user = new User($data);
+    if (Schema::hasColumn('users', 'email')) {
+        $base = strtolower(preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $data['username']));
+        $email = $base . '@simti.xyz';
+        $i = 1;
+        while (User::where('email', $email)->exists()) {
+            $email = $base . "+$i@simti.xyz";
+            $i++;
+        }
+        $user->email = $email;
+    }
+    $user->save();
+
+    $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
+    Cache::forget('user_invite_' . $kode);
+    return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
+});
 
 Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
     try {
@@ -107,7 +261,8 @@ Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
         abort(404);
     }
     $user = User::findOrFail($username);
-    return view('users.edituser', ['user' => $user, 'encoded' => $encoded]);
+    $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
+    return view('users.edituser', ['user' => $user, 'encoded' => $encoded, 'rooms' => $rooms]);
 })->name('users.edit')->middleware('auth');
 
 Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
@@ -121,12 +276,44 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
-        'role' => ['required', 'in:admin,staff'],
+        'role' => ['required', 'in:admin,petugas,manajemen,kepala_ruangan,staff'],
+        'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
+        'phone' => ['required', 'regex:/^62\d{8,15}$/', Rule::unique('users', 'phone')->ignore($user->username, 'username')],
+        'otp_code' => ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)],
         'password' => ['nullable', 'string', 'min:8'],
+    ], [
+        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
+        'phone.unique' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin',
+        'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
     if (empty($data['password'])) {
         unset($data['password']);
+    }
+    if ($data['role'] === 'staff') {
+        $data['role'] = 'petugas';
+    }
+    if ($data['role'] !== 'kepala_ruangan') {
+        $data['room_id'] = null;
+    }
+
+    $phoneChanged = isset($data['phone']) && $data['phone'] !== $user->phone;
+    if ($phoneChanged) {
+        $sessionCode = $request->session()->get('otp_code');
+        $sessionPhone = $request->session()->get('otp_phone');
+        $sessionExpires = $request->session()->get('otp_expires');
+        if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
+            return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
+        }
+        if ((int) $sessionExpires < now()->timestamp) {
+            return back()->withErrors(['otp_code' => 'Kode OTP sudah kadaluarsa.'])->withInput();
+        }
+        if ($sessionPhone !== $data['phone']) {
+            return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
+        }
+        if ($sessionCode !== ($data['otp_code'] ?? null)) {
+            return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
+        }
     }
 
     $user->update($data);
@@ -144,6 +331,33 @@ Route::delete('/pengguna/{encoded}', function (string $encoded) {
     $user->delete();
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil dihapus.');
 })->name('users.destroy')->middleware('auth');
+
+Route::post('/pengguna/{encoded}/validasi', function (string $encoded, Request $request) {
+    if (!auth()->check() || auth()->user()->role !== 'admin') {
+        abort(403);
+    }
+    try {
+        $username = decrypt($encoded);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+    $user = User::findOrFail($username);
+    $user->is_verified = true;
+    $user->save();
+    if ($user->phone && env('FONNTE_TOKEN') && env('FONNTE_URL')) {
+        try {
+            Http::withHeaders([
+                'Authorization' => env('FONNTE_TOKEN'),
+            ])->post(env('FONNTE_URL'), [
+                'target' => $user->phone,
+                'message' => "Terima kasih telah mendaftar di SIMTI RSUDZM.\nPendaftaran Anda telah berhasil diverifikasi oleh Admin.\nSilakan masuk ke sistem melalui tautan berikut:\nhttps://rsudzm.simti.xyz/auth/login",
+            ]);
+        } catch (\Throwable $e) {
+            // abaikan jika gagal kirim WA
+        }
+    }
+    return redirect()->route('users.index')->with('success', 'Pengguna berhasil divalidasi.');
+})->name('users.verify')->middleware('auth');
 
 // ---------------- Ruangan ----------------
 Route::get('/ruangan', function (Request $request) use ($roomCategories) {
