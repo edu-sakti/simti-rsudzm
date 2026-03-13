@@ -10,19 +10,19 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('users')->insert([
+         DB::table('users')->updateOrInsert(
+            ['username' => 'admin'], // pengecekan data
             [
                 'name' => 'Admin SIMTI',
-                'username' => 'admin',
                 'role' => 'admin',
                 'phone' => '6281234567890',
                 'room_id' => null,
                 'is_verified' => 1,
                 'email' => 'admin@simti.xyz',
-                'password' => Hash::make('admin123'), 
-                'created_at' => now(),
+                'password' => Hash::make('admin123'),
                 'updated_at' => now(),
-            ],
-        ]);
+                'created_at' => now(),
+            ]
+        );
     }
 }
