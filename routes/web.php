@@ -1106,7 +1106,7 @@ Route::post('/auth/login', function (Request $request) {
             return back()->withInput($request->only('username'))
                 ->withErrors(['username' => 'Akun SIMTI Anda belum diverifikasi oleh Admin. Silakan hubungi Admin untuk mengaktifkan akun']);
         }
-        if (env('OTP_LOGIN_ENABLED', true) === false || env('OTP_LOGIN_ENABLED', 'true') === 'false') {
+        if (!filter_var(env('OTP_LOGIN_ENABLED', true), FILTER_VALIDATE_BOOLEAN)) {
             Auth::login($user);
             $request->session()->regenerate();
             return redirect()->intended('/home');
