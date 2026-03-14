@@ -1106,6 +1106,11 @@ Route::post('/auth/login', function (Request $request) {
             return back()->withInput($request->only('username'))
                 ->withErrors(['username' => 'Akun SIMTI Anda belum diverifikasi oleh Admin. Silakan hubungi Admin untuk mengaktifkan akun']);
         }
+        if (env('OTP_LOGIN_ENABLED', true) === false || env('OTP_LOGIN_ENABLED', 'true') === 'false') {
+            Auth::login($user);
+            $request->session()->regenerate();
+            return redirect()->intended('/home');
+        }
 
         $length = (int) (env('OTP_LENGTH') ?: 6);
         $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
