@@ -13,17 +13,18 @@
     <div class="d-flex flex-column lh-1">
         @auth
           @php
+            $role = Auth::user()->role ?? 'staff';
             $roleLabelMap = [
               'admin' => 'Admin',
               'petugas' => 'Petugas IT',
+              'petugas_helpdesk' => 'Petugas Helpdesk',
               'staff' => 'Petugas',
               'manajemen' => 'Manajemen',
               'kepala_ruangan' => 'Kepala Ruangan',
             ];
-            $role = Auth::user()->role ?? 'staff';
             $roleLabel = $roleLabelMap[$role] ?? ucfirst($role);
             if ($role === 'kepala_ruangan') {
-              $roomName = Auth::user()->room->name ?? '';
+              $roomName = Auth::user()->room->name ?? 'Tanpa Ruangan';
               $roleLabel = trim('KARU ' . $roomName);
             }
           @endphp
@@ -31,7 +32,7 @@
           <small class="text-muted mt-1" style="font-size: 12px;">{{ $roleLabel }}</small>
         @else
           <span class="fw-semibold text-dark">Tamu</span>
-          <small class="text-muted mt-3" style="font-size: 12px;">Guest</small>
+          <small class="text-muted mt-1" style="font-size: 12px;">Guest</small>
         @endauth
     </div>
                 </a>
