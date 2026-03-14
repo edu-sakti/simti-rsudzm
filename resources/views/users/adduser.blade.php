@@ -83,12 +83,15 @@
                   <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                 @endif
                 @if (!isset($invite_code))
-                  <option value="petugas" {{ old('role') === 'petugas' ? 'selected' : '' }}>Petugas</option>
+                  <option value="petugas" {{ old('role') === 'petugas' ? 'selected' : '' }}>Petugas IT</option>
+                  <option value="petugas_helpdesk" {{ old('role') === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
                   <option value="manajemen" {{ old('role') === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
                   <option value="kepala_ruangan" {{ old('role') === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
                 @else
                   <option value="manajemen" {{ old('role', $invite_role) === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
                   <option value="kepala_ruangan" {{ old('role', $invite_role) === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
+                  <option value="petugas" {{ old('role', $invite_role) === 'petugas' ? 'selected' : '' }}>Petugas IT</option>
+                  <option value="petugas_helpdesk" {{ old('role', $invite_role) === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
                 @endif
               </select>
               @if(isset($invite_role))
@@ -115,6 +118,35 @@
               @enderror
             </div>
 
+            {{-- Jabatan Manajemen (khusus role manajemen) --}}
+            <div class="col-md-6" id="manajemen-wrapper" style="display:none;">
+              <label for="manajemen_role" class="form-label">Jabatan Manajemen</label>
+              <select id="manajemen_role" name="manajemen_role" class="form-select">
+                <option value="">Pilih Jabatan</option>
+                <option value="Direktur">DIREKTUR</option>
+                <option value="Komite">KOMITE</option>
+                <option value="Dewan Pengawas">DEWAN PENGAWAS</option>
+                <option value="SPI">SPI</option>
+                <option value="Wadir Administrasi Umum">WADIR ADMINITRASI UMUM</option>
+                <option value="Kabag Keuangan dan Penyusun Program">KABAG KEUANGAN DAN PENYUSUN PROGRAM</option>
+                <option value="Kasubbag Keuangan">KASUBBAG KEUANGAN</option>
+                <option value="Kasubbag Perencanaan, Evaluasi dan Pelaporan">KASUBBAG PERENCANAAN, EVALUASI DAN PELAPORAN</option>
+                <option value="Kabag Umum dan Kepegawaian">KABAG UMUM DAN KEPEGAWAIAN</option>
+                <option value="Kasubbag Tata Usaha dan Kepegawaian">KASUBBAG TATA USAHA DAN KEPEGAWAIAN</option>
+                <option value="Kasubbag Hubungan Masyarakat dan Pemasaran">KASUBBAG HUBUNGAN MASYARAKAT DAN PEMASARAN</option>
+                <option value="Wadir Pelayanan">WADIR PELAYANAN</option>
+                <option value="Kabid Pelayanan Penunjang">KABID PELAYANAN PENUNJANG</option>
+                <option value="Kasie Kefarmasian dan Perbekalan Kesehatan">KASIE KEFARMASIAN DAN PERBEKALAN KESEHATAN</option>
+                <option value="Kasie Penunjang, Penelitian, Pengembangan dan Upaya Rujukan">KASIE  PENUJANG, PENELITIAN, PENGEMBANGAN DAN UPAYA RUJUKAN</option>
+                <option value="Kabid Pelayanan Keperawatan dan Kebidanan">KABID PELAYANAN KEPERAWATAN DAN KEBIDANAN</option>
+                <option value="Kasie Asuhan Keperawatan dan Kebidanan">KASIE ASUHAN KEPERAWATAN DAN KEBIDANAN</option>
+                <option value="Kasie Etika Profesi, Logistik Keperawatan dan Kebidanan">KASIE ETIKA PROFESI, LOGISTIK KEPERAWATAN DAN KEBIDANAN</option>
+                <option value="Kabid Pelayanan Medis dan Penunjang Medis">KABID PELAYANAN MEDIS DAN PENUNJANG MEDIS</option>
+                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Darurat, Intensif dan Bedah Sentral">KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT DARURAT, INTENSIF DAN BEDAH SENTRAL</option>
+                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Jalan dan Rawat Inap">KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT JALAN DAN RAWAT INAP</option>
+              </select>
+            </div>
+
 
             {{-- Tombol Aksi --}}
             <div class="col-12 text-end mt-4 d-flex justify-content-end gap-2">
@@ -139,15 +171,21 @@
   (function () {
     const roleSelect = document.getElementById('role');
     const roomWrapper = document.getElementById('room-wrapper');
-    const toggleRoom = () => {
+    const manajemenWrapper = document.getElementById('manajemen-wrapper');
+    const toggleExtras = () => {
       if (roleSelect.value === 'kepala_ruangan') {
         roomWrapper.style.display = '';
       } else {
         roomWrapper.style.display = 'none';
       }
+      if (roleSelect.value === 'manajemen') {
+        manajemenWrapper.style.display = '';
+      } else {
+        manajemenWrapper.style.display = 'none';
+      }
     };
-    roleSelect.addEventListener('change', toggleRoom);
-    toggleRoom();
+    roleSelect.addEventListener('change', toggleExtras);
+    toggleExtras();
   })();
 
   (function () {

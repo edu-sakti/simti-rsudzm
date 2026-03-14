@@ -24,6 +24,8 @@
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item js-generate-invite" href="#" data-role="manajemen">Manajemen</a></li>
               <li><a class="dropdown-item js-generate-invite" href="#" data-role="kepala_ruangan">Kepala Ruangan</a></li>
+              <li><a class="dropdown-item js-generate-invite" href="#" data-role="petugas">Petugas IT</a></li>
+              <li><a class="dropdown-item js-generate-invite" href="#" data-role="petugas_helpdesk">Petugas Helpdesk</a></li>
             </ul>
           </div>
         </div>
@@ -60,7 +62,8 @@
                   @php
                     $roleLabelMap = [
                       'admin' => ['label' => 'ADMIN', 'class' => 'primary'],
-                      'petugas' => ['label' => 'PETUGAS', 'class' => 'secondary'],
+                      'petugas' => ['label' => 'PETUGAS IT', 'class' => 'secondary'],
+                      'petugas_helpdesk' => ['label' => 'PETUGAS HELPDESK', 'class' => 'secondary'],
                       'staff' => ['label' => 'PETUGAS', 'class' => 'secondary'],
                       'manajemen' => ['label' => 'MANAJEMEN', 'class' => 'info'],
                       'kepala_ruangan' => ['label' => 'KEPALA RUANGAN', 'class' => 'warning'],

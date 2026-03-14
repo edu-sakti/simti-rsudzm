@@ -75,7 +75,7 @@ Route::get('/pengguna', function (Request $request) {
 
 Route::get('/pengguna/tambah-link', function (Request $request) {
     $role = $request->query('role');
-    if ($role && !in_array($role, ['manajemen','kepala_ruangan'], true)) {
+    if ($role && !in_array($role, ['manajemen','kepala_ruangan','petugas','petugas_helpdesk'], true)) {
         abort(400);
     }
     $code = bin2hex(random_bytes(16));
@@ -155,7 +155,7 @@ Route::post('/pengguna', function (Request $request) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:admin,petugas,manajemen,kepala_ruangan,staff'],
+        'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
         'otp_code' => ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)],
@@ -221,7 +221,7 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:admin,petugas,manajemen,kepala_ruangan,staff'],
+        'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
         'otp_code' => ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)],
@@ -303,7 +303,7 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
-        'role' => ['required', 'in:admin,petugas,manajemen,kepala_ruangan,staff'],
+        'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', Rule::unique('users', 'phone')->ignore($user->username, 'username')],
         'otp_code' => ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)],
