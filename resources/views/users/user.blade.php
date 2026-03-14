@@ -16,10 +16,16 @@
             <i data-feather="user-plus"></i>
             <span>Tambah</span>
           </a>
-          <button type="button" id="btn-copy-invite" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
-            <i data-feather="link"></i>
-            <span>Generate Form</span>
-          </button>
+          <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle d-inline-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false">
+              <i data-feather="link"></i>
+              <span>Generate Form</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item js-generate-invite" href="#" data-role="manajemen">Manajemen</a></li>
+              <li><a class="dropdown-item js-generate-invite" href="#" data-role="kepala_ruangan">Kepala Ruangan</a></li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -60,6 +66,10 @@
                       'kepala_ruangan' => ['label' => 'KEPALA RUANGAN', 'class' => 'warning'],
                     ];
                     $roleMeta = $roleLabelMap[$user->role] ?? ['label' => strtoupper($user->role), 'class' => 'secondary'];
+                    if ($user->role === 'kepala_ruangan') {
+                      $roomName = $user->room->name ?? 'Tanpa Ruangan';
+                      $roleMeta['label'] = 'KARU ' . $roomName;
+                    }
                   @endphp
                   <td>
                     <span class="badge bg-{{ $roleMeta['class'] }} text-uppercase">{{ $roleMeta['label'] }}</span>
@@ -169,11 +179,11 @@
   })();
 
   (function () {
-    const btn = document.getElementById('btn-copy-invite');
-    if (!btn) return;
-    btn.addEventListener('click', async () => {
+    const links = document.querySelectorAll('.js-generate-invite');
+    if (!links.length) return;
+    const copyLink = async (role) => {
       try {
-        const res = await fetch("{{ route('users.invite') }}", {
+        const res = await fetch("{{ route('users.invite') }}?role=" + encodeURIComponent(role), {
           headers: { 'Accept': 'application/json' }
         });
         const data = await res.json();
@@ -197,6 +207,13 @@
           Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyalin link.' });
         }
       }
+    };
+    links.forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const role = el.getAttribute('data-role');
+        if (role) copyLink(role);
+      });
     });
   })();
 

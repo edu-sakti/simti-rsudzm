@@ -17,7 +17,5 @@ class Room extends Model
         'name',
     ];
 
-    protected $primaryKey = 'room_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    // Primary key tetap kolom "id" (default) agar relasi ke users.room_id bekerja
 }

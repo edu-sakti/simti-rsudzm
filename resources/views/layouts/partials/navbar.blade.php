@@ -12,8 +12,23 @@
          alt="User" />
     <div class="d-flex flex-column lh-1">
         @auth
+          @php
+            $roleLabelMap = [
+              'admin' => 'Admin',
+              'petugas' => 'Petugas IT',
+              'staff' => 'Petugas',
+              'manajemen' => 'Manajemen',
+              'kepala_ruangan' => 'Kepala Ruangan',
+            ];
+            $role = Auth::user()->role ?? 'staff';
+            $roleLabel = $roleLabelMap[$role] ?? ucfirst($role);
+            if ($role === 'kepala_ruangan') {
+              $roomName = Auth::user()->room->name ?? '';
+              $roleLabel = trim('KARU ' . $roomName);
+            }
+          @endphp
           <span class="fw-semibold text-dark">{{ Auth::user()->name }}</span>
-          <small class="text-muted mt-1" style="font-size: 12px;">{{ ucfirst(Auth::user()->role ?? 'staff') }}</small>
+          <small class="text-muted mt-1" style="font-size: 12px;">{{ $roleLabel }}</small>
         @else
           <span class="fw-semibold text-dark">Tamu</span>
           <small class="text-muted mt-3" style="font-size: 12px;">Guest</small>

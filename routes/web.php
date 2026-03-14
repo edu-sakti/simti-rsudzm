@@ -61,6 +61,7 @@ if (!function_exists('generateRoomCode')) {
 Route::get('/pengguna', function (Request $request) {
     $search = $request->query('q');
     $users = User::query()
+        ->with('room')
         ->when($search, function ($query, $search) {
             $query->where('name', 'like', "%{$search}%")
                   ->orWhere('username', 'like', "%{$search}%");
@@ -72,9 +73,16 @@ Route::get('/pengguna', function (Request $request) {
     return view('users.user', compact('users', 'search'));
 })->name('users.index')->middleware('auth');
 
-Route::get('/pengguna/tambah-link', function () {
+Route::get('/pengguna/tambah-link', function (Request $request) {
+    $role = $request->query('role');
+    if ($role && !in_array($role, ['manajemen','kepala_ruangan'], true)) {
+        abort(400);
+    }
     $code = bin2hex(random_bytes(16));
-    Cache::put('user_invite_' . $code, true, now()->addMinutes(15));
+    Cache::put('user_invite_' . $code, [
+        'valid' => true,
+        'role' => $role,
+    ], now()->addMinutes(15));
     $link = url('/pengguna/tambah/' . $code);
     if (request()->expectsJson()) {
         return response()->json(['link' => $link]);
@@ -88,11 +96,16 @@ Route::get('/pengguna/tambah', function () {
 })->name('users.create')->middleware('auth');
 
 Route::get('/pengguna/tambah/{kode}', function (string $kode) {
-    if (!Cache::get('user_invite_' . $kode)) {
+    $invite = Cache::get('user_invite_' . $kode);
+    if (!$invite || empty($invite['valid'])) {
         abort(403);
     }
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
-    return view('users.adduser', ['rooms' => $rooms, 'invite_code' => $kode]);
+    return view('users.adduser', [
+        'rooms' => $rooms,
+        'invite_code' => $kode,
+        'invite_role' => $invite['role'] ?? null,
+    ]);
 })->name('users.create.invite');
 
 Route::post('/pengguna/otp', function (Request $request) {
@@ -103,7 +116,8 @@ Route::post('/pengguna/otp', function (Request $request) {
         'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
     ]);
     if (!Auth::check()) {
-        if (empty($data['invite_code']) || !Cache::get('user_invite_' . $data['invite_code'])) {
+        $invite = !empty($data['invite_code']) ? Cache::get('user_invite_' . $data['invite_code']) : null;
+        if (!$invite || empty($invite['valid'])) {
             return response()->json(['message' => 'Akses tidak valid.'], 403);
         }
     }
@@ -111,22 +125,27 @@ Route::post('/pengguna/otp', function (Request $request) {
     $length = (int) (env('OTP_LENGTH') ?: 6);
     $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
 
-    $message = "Kode OTP SIMTI RSUDZM: {$code}. Berlaku 5 menit.";
-    $response = Http::withHeaders([
-        'Authorization' => env('FONNTE_TOKEN'),
-    ])->post(env('FONNTE_URL'), [
-        'target' => $data['phone'],
-        'message' => $message,
-    ]);
-
-    if (!$response->successful()) {
-        return response()->json(['message' => 'Gagal mengirim OTP.'], 500);
+    $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+    $message = "Kode OTP SIMTI RSUDZM: {$code}. Berlaku {$expireMinutes} menit.";
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $response = Http::withHeaders([
+            'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+        ])->post($baseUrl . '/send', [
+            'phone' => $data['phone'],
+            'message' => $message,
+        ]);
+        if (!$response->successful()) {
+            return response()->json(['message' => 'Gagal mengirim OTP.'], 500);
+        }
+    } catch (\Throwable $e) {
+        return response()->json(['message' => 'Gateway belum berjalan.'], 500);
     }
 
     $request->session()->put([
         'otp_code' => $code,
         'otp_phone' => $data['phone'],
-        'otp_expires' => now()->addMinutes(5)->timestamp,
+        'otp_expires' => now()->addMinutes($expireMinutes)->timestamp,
     ]);
 
     return response()->json(['message' => 'OTP berhasil dikirim.']);
@@ -154,7 +173,8 @@ Route::post('/pengguna', function (Request $request) {
         return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
     }
     if ((int) $sessionExpires < now()->timestamp) {
-        return back()->withErrors(['otp_code' => 'Kode OTP sudah kadaluarsa.'])->withInput();
+        $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+        return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
     }
     if ($sessionPhone !== $data['phone']) {
         return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
@@ -192,9 +212,11 @@ Route::post('/pengguna', function (Request $request) {
 })->name('users.store')->middleware('auth');
 
 Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode) {
-    if (!Cache::get('user_invite_' . $kode)) {
+    $invite = Cache::get('user_invite_' . $kode);
+    if (!$invite || empty($invite['valid'])) {
         abort(403);
     }
+    $inviteRole = $invite['role'] ?? null;
     $request->merge(['invite_code' => $kode]);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
@@ -211,6 +233,10 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
+    if ($inviteRole && $data['role'] !== $inviteRole) {
+        return back()->withErrors(['role' => 'Role tidak sesuai dengan link undangan.'])->withInput();
+    }
+
     $sessionCode = $request->session()->get('otp_code');
     $sessionPhone = $request->session()->get('otp_phone');
     $sessionExpires = $request->session()->get('otp_expires');
@@ -218,7 +244,8 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
     }
     if ((int) $sessionExpires < now()->timestamp) {
-        return back()->withErrors(['otp_code' => 'Kode OTP sudah kadaluarsa.'])->withInput();
+        $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+        return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
     }
     if ($sessionPhone !== $data['phone']) {
         return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
@@ -305,9 +332,10 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
         if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
             return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
         }
-        if ((int) $sessionExpires < now()->timestamp) {
-            return back()->withErrors(['otp_code' => 'Kode OTP sudah kadaluarsa.'])->withInput();
-        }
+    if ((int) $sessionExpires < now()->timestamp) {
+        $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+        return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
+    }
         if ($sessionPhone !== $data['phone']) {
             return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
         }
@@ -344,12 +372,13 @@ Route::post('/pengguna/{encoded}/validasi', function (string $encoded, Request $
     $user = User::findOrFail($username);
     $user->is_verified = true;
     $user->save();
-    if ($user->phone && env('FONNTE_TOKEN') && env('FONNTE_URL')) {
+    if ($user->phone) {
         try {
+            $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
             Http::withHeaders([
-                'Authorization' => env('FONNTE_TOKEN'),
-            ])->post(env('FONNTE_URL'), [
-                'target' => $user->phone,
+                'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+            ])->post($baseUrl . '/send', [
+                'phone' => $user->phone,
                 'message' => "Terima kasih telah mendaftar di SIMTI RSUDZM.\nPendaftaran Anda telah berhasil diverifikasi oleh Admin.\nSilakan masuk ke sistem melalui tautan berikut:\nhttps://rsudzm.simti.xyz/auth/login",
             ]);
         } catch (\Throwable $e) {
@@ -659,6 +688,106 @@ Route::get('/laporan', function () {
     return view('laporan.laporan');
 })->name('laporan.index')->middleware('auth');
 
+// ---------------- WA Gateway ----------------
+Route::get('/whatsapp-gateway', function () {
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    $status = ['status' => 'offline', 'hasAuth' => false, 'sentCount' => 0, 'phone' => null, 'lastActiveAt' => null];
+    try {
+        $res = \Illuminate\Support\Facades\Http::get($baseUrl . '/status');
+        if ($res->successful()) {
+            $status = $res->json();
+        }
+    } catch (\Throwable $e) {
+        // ignore
+    }
+    return view('wa-gateway.index', [
+        'waStatus' => $status['status'] ?? 'offline',
+        'waHasAuth' => (bool) ($status['hasAuth'] ?? false),
+        'waSentCount' => (int) ($status['sentCount'] ?? 0),
+        'waPhone' => $status['phone'] ?? null,
+        'waLastActiveAt' => $status['lastActiveAt'] ?? null,
+    ]);
+})->name('wa.gateway')->middleware('auth');
+
+Route::post('/whatsapp-gateway/device/delete', function () {
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $res = \Illuminate\Support\Facades\Http::post($baseUrl . '/logout');
+        if (!$res->successful()) {
+            return redirect()->route('wa.gateway')->with('error', 'Gagal menghapus device.');
+        }
+    } catch (\Throwable $e) {
+        return redirect()->route('wa.gateway')->with('error', 'Gateway belum berjalan.');
+    }
+    return redirect()->route('wa.gateway')->with('success', 'Device berhasil dihapus.');
+})->name('wa.gateway.delete')->middleware('auth');
+
+Route::post('/whatsapp-gateway/connect', function () {
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $res = \Illuminate\Support\Facades\Http::post($baseUrl . '/connect');
+        if (!$res->successful()) {
+            return response()->json(['ok' => false, 'message' => 'Gagal menghubungi gateway.'], 500);
+        }
+        return response()->json($res->json());
+    } catch (\Throwable $e) {
+        return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
+    }
+})->name('wa.gateway.connect')->middleware('auth');
+
+Route::post('/whatsapp-gateway/disconnect', function () {
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $res = \Illuminate\Support\Facades\Http::post($baseUrl . '/logout');
+        if (!$res->successful()) {
+            return response()->json(['ok' => false, 'message' => 'Gagal memutuskan koneksi.'], 500);
+        }
+        return response()->json(['ok' => true]);
+    } catch (\Throwable $e) {
+        return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
+    }
+})->name('wa.gateway.disconnect')->middleware('auth');
+
+Route::post('/whatsapp-gateway/reconnect', function () {
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        \Illuminate\Support\Facades\Http::post($baseUrl . '/logout');
+        $res = \Illuminate\Support\Facades\Http::post($baseUrl . '/connect');
+        if (!$res->successful()) {
+            return response()->json(['ok' => false, 'message' => 'Gagal menyambungkan ulang.'], 500);
+        }
+        return response()->json($res->json());
+    } catch (\Throwable $e) {
+        return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
+    }
+})->name('wa.gateway.reconnect')->middleware('auth');
+
+Route::get('/whatsapp-gateway/qr', function () {
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $res = \Illuminate\Support\Facades\Http::get($baseUrl . '/qr');
+        if (!$res->successful()) {
+            return response()->json(['ok' => false, 'message' => 'QR belum tersedia.'], 404);
+        }
+        return response()->json($res->json());
+    } catch (\Throwable $e) {
+        return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
+    }
+})->name('wa.gateway.qr')->middleware('auth');
+
+Route::get('/whatsapp-gateway/status', function () {
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $res = \Illuminate\Support\Facades\Http::get($baseUrl . '/status');
+        if (!$res->successful()) {
+            return response()->json(['ok' => false, 'message' => 'Gagal mengambil status.'], 500);
+        }
+        return response()->json($res->json());
+    } catch (\Throwable $e) {
+        return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
+    }
+})->name('wa.gateway.status')->middleware('auth');
+
 // ---------------- IP Address ----------------
 Route::get('/ip-address', function (Request $request) {
     $status = $request->query('status');
@@ -883,15 +1012,130 @@ Route::get('/auth/login', function () {
     return view('auth.login');
 })->name('login');
 
+Route::get('/auth/otp', function () {
+    return view('auth.otp');
+})->name('auth.otp');
+
+Route::post('/auth/otp', function (Request $request) {
+    $request->validate([
+        'otp_code' => ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)],
+    ], [
+        'otp_code.required' => 'Kode OTP wajib diisi.',
+        'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
+    ]);
+
+    $code = $request->session()->get('otp_login_code');
+    $userId = $request->session()->get('otp_login_user');
+    $expires = $request->session()->get('otp_login_expires');
+
+    if (!$code || !$userId || !$expires) {
+        return back()->withErrors(['otp_code' => 'Sesi OTP tidak ditemukan atau sudah kadaluarsa.']);
+    }
+    if ((int) $expires < now()->timestamp) {
+        $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+        return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."]);
+    }
+    if ($request->input('otp_code') !== $code) {
+        return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.']);
+    }
+
+    $user = User::where('id', $userId)->first();
+    if (!$user) {
+        return back()->withErrors(['otp_code' => 'Akun tidak ditemukan.']);
+    }
+
+    Auth::login($user);
+    $request->session()->regenerate();
+    $request->session()->forget(['otp_login_code', 'otp_login_user', 'otp_login_expires']);
+
+    return redirect()->intended('/home');
+})->name('auth.otp.verify');
+
+Route::post('/auth/otp/resend', function (Request $request) {
+    $userId = $request->session()->get('otp_login_user');
+    if (!$userId) {
+        return response()->json(['message' => 'Sesi OTP tidak ditemukan.'], 400);
+    }
+
+    $user = User::where('id', $userId)->first();
+    if (!$user || empty($user->phone)) {
+        return response()->json(['message' => 'No telepon belum terdaftar untuk akun ini.'], 400);
+    }
+
+    $length = (int) (env('OTP_LENGTH') ?: 6);
+    $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+    $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
+    $message = "Kode OTP SIMTI RSUDZM: {$code}. Berlaku {$expireMinutes} menit.";
+
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $response = Http::withHeaders([
+            'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+        ])->post($baseUrl . '/send', [
+            'phone' => $user->phone,
+            'message' => $message,
+        ]);
+        if (!$response->successful()) {
+            return response()->json(['message' => 'Gagal mengirim OTP.'], 500);
+        }
+    } catch (\Throwable $e) {
+        return response()->json(['message' => 'Gateway belum berjalan.'], 500);
+    }
+
+    $request->session()->put([
+        'otp_login_code' => $code,
+        'otp_login_expires' => now()->addMinutes($expireMinutes)->timestamp,
+    ]);
+
+    return response()->json(['message' => 'OTP berhasil dikirim ulang.']);
+})->name('auth.otp.resend');
+
 Route::post('/auth/login', function (Request $request) {
     $credentials = $request->validate([
         'username' => ['required', 'string'],
         'password' => ['required', 'string'],
     ]);
 
-    if (Auth::attempt(['username' => $credentials['username'], 'password' => $credentials['password']])) {
-        $request->session()->regenerate();
-        return redirect()->intended('/home');
+    if (Auth::validate(['username' => $credentials['username'], 'password' => $credentials['password']])) {
+        $user = User::where('username', $credentials['username'])->first();
+        if (!$user || empty($user->phone)) {
+            return back()->withInput($request->only('username'))
+                ->withErrors(['username' => 'No telepon belum terdaftar untuk akun ini.']);
+        }
+        if (empty($user->is_verified)) {
+            return back()->withInput($request->only('username'))
+                ->withErrors(['username' => 'Akun SIMTI Anda belum diverifikasi oleh Admin. Silakan hubungi Admin untuk mengaktifkan akun']);
+        }
+
+        $length = (int) (env('OTP_LENGTH') ?: 6);
+        $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
+        $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+        $message = "Kode OTP SIMTI RSUDZM: {$code}. Berlaku {$expireMinutes} menit.";
+
+        $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+        try {
+            $response = Http::withHeaders([
+                'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+            ])->post($baseUrl . '/send', [
+                'phone' => $user->phone,
+                'message' => $message,
+            ]);
+            if (!$response->successful()) {
+                return back()->withInput($request->only('username'))
+                    ->withErrors(['username' => 'Gagal mengirim OTP. Silakan coba lagi.']);
+            }
+        } catch (\Throwable $e) {
+            return back()->withInput($request->only('username'))
+                ->withErrors(['username' => 'Gateway belum berjalan.']);
+        }
+
+        $request->session()->put([
+            'otp_login_code' => $code,
+            'otp_login_user' => $user->id,
+            'otp_login_expires' => now()->addMinutes($expireMinutes)->timestamp,
+        ]);
+
+        return redirect()->route('auth.otp');
     }
 
     return back()->withInput($request->only('username'))

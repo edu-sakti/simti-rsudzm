@@ -11,7 +11,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
          DB::table('users')->updateOrInsert(
-            ['username' => 'admin'], // pengecekan data
+            ['username' => 'admin'], 
             [
                 'name' => 'Admin SIMTI',
                 'role' => 'admin',

@@ -5,6 +5,29 @@
 		</a>
 
 		<ul class="sidebar-nav">
+			@php($role = auth()->user()->role ?? null)
+			@if ($role === 'kepala_ruangan')
+				<li class="sidebar-item {{ request()->is('home') ? 'active' : '' }}">
+					<a class="sidebar-link" href="{{ url('home') }}">
+						<i class="align-middle" data-feather="home"></i>
+						<span class="align-middle">Dashboard</span>
+					</a>
+				</li>
+
+				<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
+					<a class="sidebar-link" href="{{ url('/helpdesk') }}">
+						<i class="align-middle" data-feather="message-circle"></i>
+						<span class="align-middle">Helpdesk</span>
+					</a>
+				</li>
+
+				<li class="sidebar-item {{ request()->is('laporan') ? 'active' : '' }}">
+					<a class="sidebar-link" href="{{ url('laporan') }}">
+						<i class="align-middle" data-feather="clipboard"></i>
+						<span class="align-middle">Laporan</span>
+					</a>
+				</li>
+			@else
 
 			<li class="sidebar-item {{ request()->is('home') ? 'active' : '' }}">
 				<a class="sidebar-link" href="{{ url('home') }}">
@@ -73,6 +96,14 @@
 					<span class="align-middle">Laporan</span>
 				</a>
 			</li>
+
+			<li class="sidebar-item {{ request()->is('whatsapp-gateway') ? 'active' : '' }}">
+				<a class="sidebar-link" href="{{ url('whatsapp-gateway') }}">
+					<i class="align-middle" data-feather="message-square"></i>
+					<span class="align-middle">WA Gateway</span>
+				</a>
+			</li>
+			@endif
 
                 @auth
                 <li class="sidebar-item">

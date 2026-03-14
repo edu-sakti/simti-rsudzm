@@ -78,7 +78,7 @@
             {{-- Role --}}
             <div class="col-md-6">
               <label for="role" class="form-label">Role</label>
-              <select id="role" name="role" class="form-select" required>
+              <select id="role" name="role" class="form-select" required {{ isset($invite_role) ? 'disabled' : '' }}>
                 @if (!isset($invite_code))
                   <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                 @endif
@@ -87,10 +87,13 @@
                   <option value="manajemen" {{ old('role') === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
                   <option value="kepala_ruangan" {{ old('role') === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
                 @else
-                  <option value="manajemen" {{ old('role') === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
-                  <option value="kepala_ruangan" {{ old('role') === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
+                  <option value="manajemen" {{ old('role', $invite_role) === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
+                  <option value="kepala_ruangan" {{ old('role', $invite_role) === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
                 @endif
               </select>
+              @if(isset($invite_role))
+                <input type="hidden" name="role" value="{{ $invite_role }}">
+              @endif
               @error('role')
                 <div class="text-danger small">{{ $message }}</div>
               @enderror
