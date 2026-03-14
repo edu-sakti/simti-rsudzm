@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Admin SIMTI',
                 'role' => 'admin',
-                'phone' => '6281234567890',
+                'phone' => '628551982024',
                 'room_id' => null,
                 'is_verified' => 1,
                 'email' => 'admin@simti.xyz',
