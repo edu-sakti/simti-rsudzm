@@ -71,7 +71,7 @@ Route::get('/pengguna', function (Request $request) {
         ->withQueryString();
 
     return view('users.user', compact('users', 'search'));
-})->name('users.index')->middleware('auth');
+})->name('users.index')->middleware(['auth', 'admin']);
 
 Route::get('/pengguna/tambah-link', function (Request $request) {
     $role = $request->query('role');
@@ -88,12 +88,12 @@ Route::get('/pengguna/tambah-link', function (Request $request) {
         return response()->json(['link' => $link]);
     }
     return redirect()->to($link);
-})->name('users.invite')->middleware('auth');
+})->name('users.invite')->middleware(['auth', 'admin']);
 
 Route::get('/pengguna/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
     return view('users.adduser', compact('rooms'));
-})->name('users.create')->middleware('auth');
+})->name('users.create')->middleware(['auth', 'admin']);
 
 Route::get('/pengguna/tambah/{kode}', function (string $kode) {
     $invite = Cache::get('user_invite_' . $kode);
@@ -209,7 +209,7 @@ Route::post('/pengguna', function (Request $request) {
 
     $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
-})->name('users.store')->middleware('auth');
+})->name('users.store')->middleware(['auth', 'admin']);
 
 Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode) {
     $invite = Cache::get('user_invite_' . $kode);
@@ -290,7 +290,7 @@ Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
     $user = User::findOrFail($username);
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
     return view('users.edituser', ['user' => $user, 'encoded' => $encoded, 'rooms' => $rooms]);
-})->name('users.edit')->middleware('auth');
+})->name('users.edit')->middleware(['auth', 'admin']);
 
 Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     try {
@@ -347,7 +347,7 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $user->update($data);
 
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil diperbarui.');
-})->name('users.update')->middleware('auth');
+})->name('users.update')->middleware(['auth', 'admin']);
 
 Route::delete('/pengguna/{encoded}', function (string $encoded) {
     try {
@@ -358,7 +358,7 @@ Route::delete('/pengguna/{encoded}', function (string $encoded) {
     $user = User::findOrFail($username);
     $user->delete();
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil dihapus.');
-})->name('users.destroy')->middleware('auth');
+})->name('users.destroy')->middleware(['auth', 'admin']);
 
 Route::post('/pengguna/{encoded}/validasi', function (string $encoded, Request $request) {
     if (!auth()->check() || auth()->user()->role !== 'admin') {
@@ -386,7 +386,7 @@ Route::post('/pengguna/{encoded}/validasi', function (string $encoded, Request $
         }
     }
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil divalidasi.');
-})->name('users.verify')->middleware('auth');
+})->name('users.verify')->middleware(['auth', 'admin']);
 
 // ---------------- Ruangan ----------------
 Route::get('/ruangan', function (Request $request) use ($roomCategories) {

@@ -76,12 +76,14 @@
 				</a>
 			</li>
 
-			<li class="sidebar-item {{ request()->is('pengguna') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('/pengguna') }}">
-					<i class="align-middle" data-feather="user"></i>
-					<span class="align-middle">Pengguna</span>
-				</a>
-			</li>
+			@if(auth()->check() && auth()->user()->role === 'admin')
+				<li class="sidebar-item {{ request()->is('pengguna') ? 'active' : '' }}">
+					<a class="sidebar-link" href="{{ url('/pengguna') }}">
+						<i class="align-middle" data-feather="user"></i>
+						<span class="align-middle">Pengguna</span>
+					</a>
+				</li>
+			@endif
 			
 			<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
 				<a class="sidebar-link" href="{{ url('/helpdesk') }}">
