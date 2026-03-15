@@ -109,6 +109,9 @@ Route::get('/pengguna/tambah/{kode}', function (string $kode) {
 })->name('users.create.invite');
 
 Route::post('/pengguna/otp', function (Request $request) {
+    if (!filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN)) {
+        return response()->json(['message' => 'OTP sedang dinonaktifkan.'], 400);
+    }
     $data = $request->validate([
         'phone' => ['required', 'regex:/^62\d{8,15}$/'],
         'invite_code' => ['nullable', 'string'],
@@ -152,13 +155,14 @@ Route::post('/pengguna/otp', function (Request $request) {
 })->name('users.otp');
 
 Route::post('/pengguna', function (Request $request) {
+    $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
         'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
-        'otp_code' => ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)],
+        'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
     ], [
         'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
@@ -166,21 +170,23 @@ Route::post('/pengguna', function (Request $request) {
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
-    $sessionCode = $request->session()->get('otp_code');
-    $sessionPhone = $request->session()->get('otp_phone');
-    $sessionExpires = $request->session()->get('otp_expires');
-    if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
-        return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
-    }
-    if ((int) $sessionExpires < now()->timestamp) {
-        $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
-        return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
-    }
-    if ($sessionPhone !== $data['phone']) {
-        return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
-    }
-    if ($sessionCode !== $data['otp_code']) {
-        return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
+    if ($otpEnabled) {
+        $sessionCode = $request->session()->get('otp_code');
+        $sessionPhone = $request->session()->get('otp_phone');
+        $sessionExpires = $request->session()->get('otp_expires');
+        if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
+            return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
+        }
+        if ((int) $sessionExpires < now()->timestamp) {
+            $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+            return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
+        }
+        if ($sessionPhone !== $data['phone']) {
+            return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
+        }
+        if ($sessionCode !== $data['otp_code']) {
+            return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
+        }
     }
 
     if ($data['role'] === 'staff') {
@@ -207,7 +213,9 @@ Route::post('/pengguna', function (Request $request) {
 
     $user->save();
 
-    $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
+    if ($otpEnabled) {
+        $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
+    }
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
 })->name('users.store')->middleware(['auth', 'admin']);
 
@@ -218,13 +226,14 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     }
     $inviteRole = $invite['role'] ?? null;
     $request->merge(['invite_code' => $kode]);
+    $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
         'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
-        'otp_code' => ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)],
+        'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
         'invite_code' => ['required', 'string'],
     ], [
@@ -237,21 +246,23 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         return back()->withErrors(['role' => 'Role tidak sesuai dengan link undangan.'])->withInput();
     }
 
-    $sessionCode = $request->session()->get('otp_code');
-    $sessionPhone = $request->session()->get('otp_phone');
-    $sessionExpires = $request->session()->get('otp_expires');
-    if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
-        return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
-    }
-    if ((int) $sessionExpires < now()->timestamp) {
-        $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
-        return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
-    }
-    if ($sessionPhone !== $data['phone']) {
-        return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
-    }
-    if ($sessionCode !== $data['otp_code']) {
-        return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
+    if ($otpEnabled) {
+        $sessionCode = $request->session()->get('otp_code');
+        $sessionPhone = $request->session()->get('otp_phone');
+        $sessionExpires = $request->session()->get('otp_expires');
+        if (!$sessionCode || !$sessionPhone || !$sessionExpires) {
+            return back()->withErrors(['otp_code' => 'Kode OTP belum dikirim atau sudah kadaluarsa.'])->withInput();
+        }
+        if ((int) $sessionExpires < now()->timestamp) {
+            $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+            return back()->withErrors(['otp_code' => "Kode OTP sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
+        }
+        if ($sessionPhone !== $data['phone']) {
+            return back()->withErrors(['phone' => 'No telepon tidak sesuai dengan OTP yang dikirim.'])->withInput();
+        }
+        if ($sessionCode !== $data['otp_code']) {
+            return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
+        }
     }
 
     if ($data['role'] === 'staff') {
@@ -276,7 +287,9 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     }
     $user->save();
 
-    $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
+    if ($otpEnabled) {
+        $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
+    }
     Cache::forget('user_invite_' . $kode);
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
 });
@@ -300,13 +313,14 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     }
     $user = User::findOrFail($username);
 
+    $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
         'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', Rule::unique('users', 'phone')->ignore($user->username, 'username')],
-        'otp_code' => ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)],
+        'otp_code' => $otpEnabled ? ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['nullable', 'string', 'min:8'],
     ], [
         'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
@@ -325,7 +339,7 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     }
 
     $phoneChanged = isset($data['phone']) && $data['phone'] !== $user->phone;
-    if ($phoneChanged) {
+    if ($phoneChanged && $otpEnabled) {
         $sessionCode = $request->session()->get('otp_code');
         $sessionPhone = $request->session()->get('otp_phone');
         $sessionExpires = $request->session()->get('otp_expires');

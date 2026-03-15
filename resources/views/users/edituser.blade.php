@@ -40,7 +40,9 @@
             <div class="input-group">
               <input type="text" id="edit_phone" name="phone" class="form-control"
                      value="{{ old('phone', $user->phone) }}" placeholder="contoh: 62812xxxxxxx" required>
-              <button class="btn btn-outline-primary" type="button" id="btn-otp-edit">OTP</button>
+              @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+                <button class="btn btn-outline-primary" type="button" id="btn-otp-edit">OTP</button>
+              @endif
             </div>
             @error('phone')
               <div class="text-danger small">{{ $message }}</div>
@@ -49,14 +51,16 @@
           </div>
 
           {{-- Input OTP (muncul jika phone berubah) --}}
-          <div class="col-md-6" id="otp-wrapper-edit" style="display:none;">
-            <label for="otp_code_edit" class="form-label">Kode OTP</label>
-            <input type="text" id="otp_code_edit" name="otp_code" class="form-control"
-                   placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}">
-            @error('otp_code')
-              <div class="text-danger small">{{ $message }}</div>
-            @enderror
-          </div>
+          @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+            <div class="col-md-6" id="otp-wrapper-edit" style="display:none;">
+              <label for="otp_code_edit" class="form-label">Kode OTP</label>
+              <input type="text" id="otp_code_edit" name="otp_code" class="form-control"
+                     placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}">
+              @error('otp_code')
+                <div class="text-danger small">{{ $message }}</div>
+              @enderror
+            </div>
+          @endif
 
           {{-- Role --}}
           <div class="col-md-6">
@@ -168,6 +172,7 @@
     toggleExtras();
   })();
 
+  @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
   (function () {
     const originalPhone = "{{ $user->phone ?? '' }}";
     const phoneInput = document.getElementById('edit_phone');
@@ -221,6 +226,7 @@
       }
     });
   })();
+  @endif
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>

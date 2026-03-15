@@ -47,10 +47,12 @@
             {{-- No Telepon + OTP --}}
             <div class="col-md-6">
               <label for="phone" class="form-label">No Telepon (format internasional)</label>
-              <div class="input-group">
-                <input type="text" id="phone" name="phone" class="form-control" placeholder="contoh: 62812xxxxxxx" value="{{ old('phone') }}" required>
+            <div class="input-group">
+              <input type="text" id="phone" name="phone" class="form-control" placeholder="contoh: 62812xxxxxxx" value="{{ old('phone') }}" required>
+              @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
                 <button class="btn btn-outline-primary" type="button" id="btn-otp">OTP</button>
-              </div>
+              @endif
+            </div>
               @error('phone')
                 <div class="text-danger small">{{ $message }}</div>
               @enderror
@@ -58,13 +60,15 @@
             </div>
 
             {{-- Input OTP --}}
-            <div class="col-md-6">
-              <label for="otp_code" class="form-label">Kode OTP</label>
-              <input type="text" id="otp_code" name="otp_code" class="form-control" placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}" required>
-              @error('otp_code')
-                <div class="text-danger small">{{ $message }}</div>
-              @enderror
-            </div>
+            @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+              <div class="col-md-6">
+                <label for="otp_code" class="form-label">Kode OTP</label>
+                <input type="text" id="otp_code" name="otp_code" class="form-control" placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}" required>
+                @error('otp_code')
+                  <div class="text-danger small">{{ $message }}</div>
+                @enderror
+              </div>
+            @endif
 
             {{-- Password --}}
             <div class="col-md-6">
@@ -187,6 +191,7 @@
     toggleExtras();
   })();
 
+  @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
   (function () {
     const btnOtp = document.getElementById('btn-otp');
     const phoneInput = document.getElementById('phone');
@@ -222,6 +227,7 @@
       }
     });
   })();
+  @endif
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
