@@ -880,7 +880,7 @@ Route::get('/helpdesk/detail-ticket/{no_ticket}', function (string $noTicket) {
     return view('helpdesk.detailticket', [
         'ticket' => $ticket,
     ]);
-})->name('helpdesk.show')->middleware('auth');
+})->name('helpdesk.show');
 
 // ---------------- Laporan ----------------
 Route::get('/laporan', function () {
