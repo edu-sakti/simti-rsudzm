@@ -70,7 +70,7 @@
 										<td>{{ $ticket->keterangan ?? '-' }}</td>
 										<td>
 											<div class="d-flex flex-wrap gap-2">
-												<a href="#" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
+												<a href="{{ route('helpdesk.show', $ticket->no_ticket) }}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
 													<i data-feather="info"></i> Detail
 												</a>
 												<a href="#" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">

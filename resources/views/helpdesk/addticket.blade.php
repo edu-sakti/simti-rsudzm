@@ -74,17 +74,7 @@
 								@endforeach
 							</select>
 						</div>
-						<div class="col-md-6">
-							<label class="form-label">Status</label>
-							<select name="status" class="form-select">
-								<option value="">Pilih Status</option>
-								<option value="open">Terbuka</option>
-								<option value="assigned">Ditugaskan</option>
-								<option value="in_progress">Dalam Proses</option>
-								<option value="resolved">Terselesaikan</option>
-								<option value="closed">Ditutup</option>
-							</select>
-						</div>
+						<div class="col-md-6"></div>
 						<div class="col-md-6">
 							<label class="form-label">Keterangan</label>
 							<input type="text" name="keterangan" class="form-control" placeholder="Catatan tambahan">
@@ -113,7 +103,6 @@
 					'select[name="kategori"]',
 					'textarea[name="kendala"]',
 					'select[name="prioritas"]',
-					'select[name="status"]'
 				];
 				const missing = requiredSelectors.some((selector) => {
 					const el = form.querySelector(selector);

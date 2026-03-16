@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Contracts\Encryption\DecryptException;
-use App\Http\Controllers\DeviceController;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,6 +16,7 @@ use App\Models\Cctv;
 use App\Models\IpAddr;
 use App\Models\Device;
 use App\Models\DeviceSpec;
+use App\Models\HelpdeskTicket;
 
 Route::get('/', function () {
     return view('home');
@@ -698,9 +698,32 @@ Route::delete('/isp/{encoded}', function (string $encoded) {
 })->name('isp.destroy')->middleware('auth');
 
 // ---------------- Helpdesk ----------------
-Route::get('/helpdesk', [\App\Http\Controllers\HelpdeskController::class, 'index'])
-    ->name('helpdesk.index')
-    ->middleware('auth');
+Route::get('/helpdesk', function () {
+    $tickets = DB::table('helpdesk_tickets')
+        ->leftJoin('rooms', 'rooms.id', '=', 'helpdesk_tickets.room_id')
+        ->leftJoin('users', 'users.id', '=', 'helpdesk_tickets.petugas_id')
+        ->select(
+            'helpdesk_tickets.id',
+            'helpdesk_tickets.no_ticket',
+            'helpdesk_tickets.tanggal',
+            'helpdesk_tickets.pelapor',
+            'helpdesk_tickets.kategori',
+            'helpdesk_tickets.sub_kategori',
+            'helpdesk_tickets.kendala',
+            'helpdesk_tickets.prioritas',
+            'helpdesk_tickets.status',
+            'helpdesk_tickets.keterangan',
+            'rooms.name as room_name',
+            'users.name as petugas_name'
+        )
+        ->orderByDesc('helpdesk_tickets.tanggal')
+        ->orderByDesc('helpdesk_tickets.id')
+        ->get();
+
+    return view('helpdesk.helpdesk', [
+        'tickets' => $tickets,
+    ]);
+})->name('helpdesk.index')->middleware('auth');
 
 Route::get('/helpdesk/tambah-ticket', function () {
     $rooms = \App\Models\Room::query()
@@ -719,13 +742,145 @@ Route::get('/helpdesk/tambah-ticket', function () {
     ]);
 })->name('helpdesk.create')->middleware('auth');
 
-Route::post('/helpdesk/tambah-ticket', [\App\Http\Controllers\HelpdeskController::class, 'store'])
-    ->name('helpdesk.store')
-    ->middleware('auth');
+Route::post('/helpdesk/tambah-ticket', function (Request $request) {
+    $validated = $request->validate([
+        'tanggal' => ['required', 'date'],
+        'pelapor' => ['required', 'string', 'max:255'],
+        'room_id' => ['required', 'integer', 'exists:rooms,id'],
+        'kategori' => ['required', Rule::in(['hardware', 'software'])],
+        'jenis_hardware' => [
+            Rule::requiredIf(fn () => $request->input('kategori') === 'hardware'),
+            Rule::in(['komputer', 'jaringan', 'printer', 'telepon']),
+        ],
+        'kendala' => ['required', 'string'],
+        'prioritas' => ['required', Rule::in(['rendah', 'sedang', 'tinggi'])],
+        'petugas_id' => ['nullable', 'integer', 'exists:users,id'],
+        'keterangan' => ['nullable', 'string'],
+    ]);
 
-Route::delete('/helpdesk/{ticket}', [\App\Http\Controllers\HelpdeskController::class, 'destroy'])
-    ->name('helpdesk.destroy')
-    ->middleware('auth');
+    $kategoriMap = [
+        'hardware' => '1',
+        'software' => '2',
+    ];
+    $subKategoriMap = [
+        'komputer' => '1',
+        'jaringan' => '2',
+        'printer' => '3',
+        'telepon' => '4',
+    ];
+    $prioritasMap = [
+        'rendah' => '1',
+        'sedang' => '2',
+        'tinggi' => '3',
+    ];
+
+    $tanggal = \Carbon\Carbon::parse($validated['tanggal'])->format('dmY');
+    $kategoriCode = $kategoriMap[$validated['kategori']];
+    $subKategoriValue = $validated['kategori'] === 'hardware' ? ($validated['jenis_hardware'] ?? null) : null;
+    $subKategoriCode = $subKategoriValue ? $subKategoriMap[$subKategoriValue] : '0';
+    $prioritasCode = $prioritasMap[$validated['prioritas']];
+
+    $room = Room::find($validated['room_id']);
+    $roomCode = $room?->room_id ?: (string) $validated['room_id'];
+    $roomCode = str_replace('-', '', $roomCode);
+
+    $noTicket = $roomCode . $tanggal . $kategoriCode . $subKategoriCode . $prioritasCode;
+
+    $ticket = HelpdeskTicket::create([
+        'no_ticket' => $noTicket,
+        'tanggal' => $validated['tanggal'],
+        'pelapor' => $validated['pelapor'],
+        'room_id' => $validated['room_id'],
+        'kategori' => $validated['kategori'],
+        'sub_kategori' => $subKategoriValue,
+        'kendala' => $validated['kendala'],
+        'prioritas' => $validated['prioritas'],
+        'petugas_id' => $validated['petugas_id'] ?? null,
+        'status' => 'open',
+        'keterangan' => $validated['keterangan'] ?? null,
+    ]);
+
+    if (!empty($validated['petugas_id'])) {
+        $petugas = User::select('id', 'phone')
+            ->where('id', $validated['petugas_id'])
+            ->where('role', 'petugas')
+            ->first();
+        if ($petugas && !empty($petugas->phone)) {
+            $phone = preg_replace('/\D+/', '', $petugas->phone);
+            if (str_starts_with($phone, '0')) {
+                $phone = '62' . substr($phone, 1);
+            }
+            if (!str_starts_with($phone, '62')) {
+                $phone = '62' . $phone;
+            }
+
+            $message = "Anda menerima tiket baru. Silakan segera melakukan pengecekan pada detail tiket melalui tautan berikut:\n"
+                . "https://rsudzm.simti.xyz/helpdesk/detail-ticket/{$ticket->no_ticket}\n"
+                . "Mohon untuk segera ditindaklanjuti.";
+
+            $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+            try {
+                $response = Http::withHeaders([
+                    'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+                ])->post($baseUrl . '/send', [
+                    'phone' => $phone,
+                    'message' => $message,
+                ]);
+                if (!$response->successful()) {
+                    \Log::error('Gagal mengirim notif helpdesk.', [
+                        'ticket' => $ticket->no_ticket,
+                        'petugas_id' => $petugas->id,
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Gateway WA belum berjalan saat kirim notif helpdesk.', [
+                    'ticket' => $ticket->no_ticket,
+                    'petugas_id' => $petugas->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            \Log::error('Notif helpdesk tidak dikirim karena no HP petugas kosong.', [
+                'ticket' => $ticket->no_ticket,
+                'petugas_id' => $validated['petugas_id'],
+            ]);
+        }
+    } else {
+        \Log::error('Notif helpdesk tidak dikirim karena petugas_id kosong.', [
+            'ticket' => $ticket->no_ticket,
+        ]);
+    }
+
+    return redirect('/helpdesk')->with('success', 'Ticket berhasil dibuat.');
+})->name('helpdesk.store')->middleware('auth');
+
+Route::delete('/helpdesk/{ticket}', function (HelpdeskTicket $ticket) {
+    $ticket->delete();
+    return redirect('/helpdesk')->with('success', 'Ticket berhasil dihapus.');
+})->name('helpdesk.destroy')->middleware('auth');
+
+Route::get('/helpdesk/detail-ticket/{no_ticket}', function (string $noTicket) {
+    $ticket = DB::table('helpdesk_tickets')
+        ->leftJoin('rooms', 'rooms.id', '=', 'helpdesk_tickets.room_id')
+        ->leftJoin('users', 'users.id', '=', 'helpdesk_tickets.petugas_id')
+        ->select(
+            'helpdesk_tickets.*',
+            'rooms.name as room_name',
+            'users.name as petugas_name'
+        )
+        ->where('helpdesk_tickets.no_ticket', $noTicket)
+        ->first();
+
+    if (!$ticket) {
+        abort(404);
+    }
+
+    return view('helpdesk.detailticket', [
+        'ticket' => $ticket,
+    ]);
+})->name('helpdesk.show')->middleware('auth');
 
 // ---------------- Laporan ----------------
 Route::get('/laporan', function () {
@@ -925,10 +1080,85 @@ Route::put('/ip-address/{encoded}', function (Request $request, string $encoded)
 })->name('ipaddr.update')->middleware('auth');
 
 // ---------------- Devices ----------------
-Route::get('/perangkat', [DeviceController::class, 'index'])->name('device.index')->middleware('auth');
-Route::get('/perangkat/tambah-perangkat', [DeviceController::class, 'create'])->name('device.create')->middleware('auth');
-Route::post('/perangkat/tambah-perangkat', [DeviceController::class, 'store'])->name('device.store')->middleware('auth');
-Route::delete('/perangkat/{device}', [DeviceController::class, 'destroy'])->name('device.destroy')->middleware('auth');
+Route::get('/perangkat', function (Request $request) {
+    $q = $request->query('q');
+    $deviceType = $request->query('device_type');
+
+    $devices = Device::with(['room','spec'])
+        ->when($q, function ($query, $q) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('device_name', 'like', "%{$q}%")
+                    ->orWhere('device_type', 'like', "%{$q}%")
+                    ->orWhere('brand', 'like', "%{$q}%")
+                    ->orWhere('model', 'like', "%{$q}%")
+                    ->orWhere('status', 'like', "%{$q}%")
+                    ->orWhere('condition', 'like', "%{$q}%")
+                    ->orWhere('notes', 'like', "%{$q}%");
+            });
+        })
+        ->when($deviceType, function ($query, $deviceType) {
+            $query->where('device_type', $deviceType);
+        })
+        ->orderBy('device_name')
+        ->paginate(20)
+        ->withQueryString();
+
+    $deviceTypes = [
+        'CPU',
+        'Monitor',
+        'PC AIO',
+        'Laptop',
+        'Router',
+        'Hub',
+        'Printer',
+        'Telepon',
+    ];
+
+    return view('devices.device', [
+        'devices' => $devices,
+        'q' => $q,
+        'deviceTypes' => $deviceTypes,
+    ]);
+})->name('device.index')->middleware('auth');
+
+Route::get('/perangkat/tambah-perangkat', function () {
+    $rooms = Room::orderBy('room_id')->get(['room_id', 'name']);
+    $deviceTypes = [
+        'CPU',
+        'Monitor',
+        'PC AIO',
+        'Laptop',
+        'Router',
+        'Hub',
+        'Printer',
+        'Telepon',
+    ];
+    return view('devices.adddevice', compact('rooms', 'deviceTypes'));
+})->name('device.create')->middleware('auth');
+
+Route::post('/perangkat/tambah-perangkat', function (Request $request) {
+    $deviceTypes = ['CPU', 'Monitor', 'PC AIO', 'Laptop', 'Router', 'Hub', 'Printer', 'Telepon'];
+
+    $data = $request->validate([
+        'device_name' => ['required', 'string', 'max:255'],
+        'room_id' => ['nullable', 'string', 'max:20', 'exists:rooms,room_id'],
+        'device_type' => ['required', 'string', Rule::in($deviceTypes)],
+        'brand' => ['nullable', 'string', 'max:255'],
+        'model' => ['nullable', 'string', 'max:255'],
+        'condition' => ['nullable', 'string', Rule::in(['Good','Damage','Maintenance'])],
+        'status' => ['nullable', 'string', Rule::in(['Active','Inactive'])],
+        'notes' => ['nullable', 'string'],
+    ]);
+
+    Device::create($data);
+
+    return redirect()->route('device.index')->with('success', 'Perangkat berhasil ditambahkan.');
+})->name('device.store')->middleware('auth');
+
+Route::delete('/perangkat/{device}', function (Device $device) {
+    $device->delete();
+    return redirect()->route('device.index')->with('success', 'Perangkat berhasil dihapus.');
+})->name('device.destroy')->middleware('auth');
 
 Route::get('/perangkat/{encoded}/edit-perangkat', function (string $encoded) {
     try {

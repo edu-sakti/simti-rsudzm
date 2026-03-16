@@ -124,22 +124,32 @@ app.post('/send', async (req, res) => {
     const text = String(message);
 
     // Queue sends and enforce minimum 5 seconds between messages
-    sendQueue = sendQueue.then(async () => {
-      const now = Date.now();
-      const waitMs = Math.max(0, 5000 - (now - lastSendAt));
-      if (waitMs > 0) {
-        await new Promise((r) => setTimeout(r, waitMs));
-      }
-      await sock.sendMessage(jid, { text });
-      lastSendAt = Date.now();
-      lastActiveAt = new Date().toISOString();
-      sentCount += 1;
-    });
+    const [check] = await sock.onWhatsApp(jid);
+    if (!check?.exists) {
+      return res.status(400).json({ ok: false, message: 'Nomor tidak terdaftar di WhatsApp.' });
+    }
+
+    sendQueue = sendQueue
+      .then(async () => {
+        const now = Date.now();
+        const waitMs = Math.max(0, 5000 - (now - lastSendAt));
+        if (waitMs > 0) {
+          await new Promise((r) => setTimeout(r, waitMs));
+        }
+        await sock.sendMessage(jid, { text });
+        lastSendAt = Date.now();
+        lastActiveAt = new Date().toISOString();
+        sentCount += 1;
+      })
+      .catch((err) => {
+        console.error('Send queue error:', err?.message || err);
+      });
 
     await sendQueue;
     res.json({ ok: true, queued: true });
   } catch (e) {
-    res.status(500).json({ ok: false, message: 'Gagal mengirim pesan.' });
+    console.error('Send error:', e?.message || e);
+    res.status(500).json({ ok: false, message: e?.message || 'Gagal mengirim pesan.' });
   }
 });
 
