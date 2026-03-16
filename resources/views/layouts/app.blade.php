@@ -15,7 +15,9 @@
     
 <body>
 	<div class="wrapper">
-		@include('layouts.partials.sidebar')
+		@auth
+			@include('layouts.partials.sidebar')
+		@endauth
 
 		<div class="main">
 			@include('layouts.partials.navbar')
