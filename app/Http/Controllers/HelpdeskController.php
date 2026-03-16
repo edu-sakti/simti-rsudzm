@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\HelpdeskTicket;
 use App\Models\Room;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
 
 class HelpdeskController extends Controller
@@ -97,6 +99,39 @@ class HelpdeskController extends Controller
             'status' => $validated['status'],
             'keterangan' => $validated['keterangan'] ?? null,
         ]);
+
+        if (!empty($validated['petugas_id'])) {
+            $petugas = User::select('phone', 'name')->find($validated['petugas_id']);
+            $roomName = $room?->name ?: '-';
+            $tanggalLabel = \Carbon\Carbon::parse($validated['tanggal'])->format('d/m/Y');
+            if ($petugas && !empty($petugas->phone)) {
+                $message = "📢 NOTIFIKASI TIKET HELPDESK\n\n" .
+                    "Berikut tiket yang perlu segera ditindaklanjuti:\n\n" .
+                    "No. Ticket : {$noTicket}\n" .
+                    "Tanggal    : {$tanggalLabel}\n" .
+                    "Pelapor    : {$validated['pelapor']}\n" .
+                    "Ruangan    : {$roomName}\n" .
+                    "Kategori   : {$validated['kategori']}\n" .
+                    "Sub Kategori : " . ($subKategoriValue ?: '-') . "\n\n" .
+                    "Kendala :\n{$validated['kendala']}\n\n" .
+                    "Prioritas  : {$validated['prioritas']}\n\n" .
+                    "Keterangan :\n" . ($validated['keterangan'] ?: '-') . "\n\n" .
+                    "Mohon untuk segera melakukan pengecekan dan penanganan terhadap tiket tersebut.\n\n" .
+                    "Terima kasih.";
+
+                $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+                try {
+                    Http::withHeaders([
+                        'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+                    ])->post($baseUrl . '/send', [
+                        'phone' => $petugas->phone,
+                        'message' => $message,
+                    ]);
+                } catch (\Throwable $e) {
+                    // abaikan jika gagal kirim WA
+                }
+            }
+        }
 
         return redirect('/helpdesk')->with('success', 'Ticket berhasil dibuat.');
     }
