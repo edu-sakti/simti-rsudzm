@@ -73,7 +73,12 @@
             {{-- Password --}}
             <div class="col-md-6">
               <label for="password" class="form-label">Password</label>
-              <input type="password" id="password" name="password" class="form-control" placeholder="Masukkan password" required>
+              <div class="input-group">
+                <input type="password" id="password" name="password" class="form-control" placeholder="Masukkan password" required>
+                <button class="btn btn-outline-secondary" type="button" data-toggle="password" data-target="#password" aria-label="Tampilkan password">
+                  <i data-feather="eye-off"></i>
+                </button>
+              </div>
               @error('password')
                 <div class="text-danger small">{{ $message }}</div>
               @enderror

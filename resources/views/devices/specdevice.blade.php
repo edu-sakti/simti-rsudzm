@@ -82,6 +82,16 @@
           </div>
 
           <div class="mb-3">
+            <label class="form-label fw-semibold">IP Address</label>
+            <input type="text" name="ip_address" class="form-control" placeholder="Contoh: 10.10.1.10" value="{{ old('ip_address', $spec->ip_address ?? '') }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Subnet</label>
+            <input type="text" name="subnet" class="form-control" placeholder="Contoh: 255.255.255.0" value="{{ old('subnet', $spec->subnet ?? '') }}">
+          </div>
+
+          <div class="mb-3">
             <label class="form-label fw-semibold">GPU</label>
             <select name="gpu" class="form-select">
               <option value="">Pilih GPU</option>

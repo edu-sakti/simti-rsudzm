@@ -19,7 +19,12 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <input class="form-control form-control-lg @error('password') is-invalid @enderror" type="password" name="password" placeholder="Masukkan password" required>
+                    <div class="input-group input-group-lg">
+                      <input id="login_password" class="form-control @error('password') is-invalid @enderror" type="password" name="password" placeholder="Masukkan password" required>
+                      <button class="btn btn-outline-secondary" type="button" data-toggle="password" data-target="#login_password" aria-label="Tampilkan password">
+                        <i data-feather="eye-off"></i>
+                      </button>
+                    </div>
                     @error('password')
                       <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

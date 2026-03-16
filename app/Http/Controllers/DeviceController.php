@@ -40,6 +40,7 @@ class DeviceController extends Controller
             'Router',
             'Hub',
             'Printer',
+            'Telepon',
         ];
 
         return view('devices.device', [
@@ -60,13 +61,14 @@ class DeviceController extends Controller
             'Router',
             'Hub',
             'Printer',
+            'Telepon',
         ];
         return view('devices.adddevice', compact('rooms', 'deviceTypes'));
     }
 
     public function store(Request $request)
     {
-        $deviceTypes = ['CPU', 'Monitor', 'PC AIO', 'Laptop', 'Router', 'Hub', 'Printer'];
+        $deviceTypes = ['CPU', 'Monitor', 'PC AIO', 'Laptop', 'Router', 'Hub', 'Printer', 'Telepon'];
 
         $data = $request->validate([
             'device_name' => ['required', 'string', 'max:255'],

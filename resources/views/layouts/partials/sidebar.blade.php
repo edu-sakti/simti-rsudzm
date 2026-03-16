@@ -83,6 +83,12 @@
 						<span class="align-middle">Pengguna</span>
 					</a>
 				</li>
+				<li class="sidebar-item {{ request()->is('hak-akses') ? 'active' : '' }}">
+					<a class="sidebar-link" href="{{ url('/hak-akses') }}">
+						<i class="align-middle" data-feather="shield"></i>
+						<span class="align-middle">Hak Akses</span>
+					</a>
+				</li>
 			@endif
 			
 			<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">

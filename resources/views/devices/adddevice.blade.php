@@ -36,7 +36,7 @@
             <label class="form-label fw-semibold">Tipe Perangkat</label>
             <select name="device_type" id="device_type" class="form-select" required>
               <option value="">Pilih Tipe</option>
-              @foreach($deviceTypes ?? ['CPU','Monitor','PC AIO','Laptop','Router','Hub','Printer'] as $type)
+              @foreach($deviceTypes ?? ['CPU','Monitor','PC AIO','Laptop','Router','Hub','Printer','Telepon'] as $type)
                 <option value="{{ $type }}" {{ old('device_type') == $type ? 'selected' : '' }}>{{ $type }}</option>
               @endforeach
             </select>

@@ -37,6 +37,24 @@
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
+
+        document.addEventListener('click', function (event) {
+            const btn = event.target.closest('[data-toggle="password"]');
+            if (!btn) return;
+            event.preventDefault();
+            const selector = btn.getAttribute('data-target');
+            const input = selector
+                ? document.querySelector(selector)
+                : btn.closest('.input-group')?.querySelector('input');
+            if (!input) return;
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            btn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+            btn.innerHTML = `<i data-feather="${isPassword ? 'eye' : 'eye-off'}"></i>`;
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        });
     </script>
 
     @stack('scripts')

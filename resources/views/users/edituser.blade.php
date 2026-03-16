@@ -132,8 +132,13 @@
           {{-- Password selalu terlihat --}}
           <div class="col-md-6">
             <label for="edit_password" class="form-label">Password (opsional)</label>
-            <input type="text" id="edit_password" name="password" class="form-control" 
-                   placeholder="Biarkan kosong jika tidak diubah" value="{{ old('password') }}">
+            <div class="input-group">
+              <input type="password" id="edit_password" name="password" class="form-control" 
+                     placeholder="Biarkan kosong jika tidak diubah" value="{{ old('password') }}">
+              <button class="btn btn-outline-secondary" type="button" data-toggle="password" data-target="#edit_password" aria-label="Tampilkan password">
+                <i data-feather="eye-off"></i>
+              </button>
+            </div>
           </div>
 
           {{-- Tombol simpan --}}
@@ -151,7 +156,6 @@
 
 <script>
   if (typeof feather !== 'undefined') feather.replace();
-
   (function () {
     const roleSelect = document.getElementById('edit_role');
     const roomWrapper = document.getElementById('room-wrapper');

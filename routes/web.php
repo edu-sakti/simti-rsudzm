@@ -502,6 +502,11 @@ Route::delete('/ruangan/{encoded}', function (string $encoded) {
     return redirect()->route('rooms.index')->with('success', 'Ruangan berhasil dihapus.');
 })->name('rooms.destroy')->middleware('auth');
 
+// ---------------- Hak Akses ----------------
+Route::get('/hak-akses', function () {
+    return view('hak-akses.hakakses');
+})->name('hakakses.index')->middleware(['auth', 'admin']);
+
 // ---------------- CCTV ----------------
 Route::get('/cctv', function (Request $request) {
     $status = $request->query('status');
@@ -1000,6 +1005,8 @@ Route::post('/perangkat/spesifikasi-perangkat', function (Request $request) {
         'ram' => ['required', Rule::in($ramOptions)],
         'storage_type' => ['required', Rule::in(['HDD','SSD'])],
         'storage_capacity' => ['required', Rule::in($capacityOptions)],
+        'ip_address' => ['nullable', 'ip'],
+        'subnet' => ['nullable', 'ipv4'],
         'gpu' => ['nullable','string','max:255'],
         'os' => ['required','string','max:255'],
         'details' => ['nullable','string'],
@@ -1009,6 +1016,21 @@ Route::post('/perangkat/spesifikasi-perangkat', function (Request $request) {
         ['device_id' => $data['device_id']],
         collect($data)->except('device_id')->toArray()
     );
+
+    if (!empty($data['ip_address'])) {
+        $device = Device::with('room')->find($data['device_id']);
+        $roomName = $device?->room?->name ?: ($device?->room_id ?: '');
+        $desc = trim(($device?->device_name ?: 'Perangkat') . ' - ' . $roomName);
+
+        IpAddr::updateOrCreate(
+            ['ip_address' => $data['ip_address']],
+            [
+                'subnet' => $data['subnet'] ?? null,
+                'status' => 'available',
+                'description' => $desc,
+            ]
+        );
+    }
 
     return redirect()->route('device.index')->with('success','Spesifikasi perangkat berhasil disimpan.');
 })->name('device.spec.save')->middleware('auth');
@@ -1021,6 +1043,8 @@ Route::post('/perangkat/{device}/spec', function (Request $request, Device $devi
         'ram' => ['required', Rule::in($ramOptions)],
         'storage_type' => ['required', Rule::in(['HDD','SSD'])],
         'storage_capacity' => ['required', Rule::in($capacityOptions)],
+        'ip_address' => ['nullable', 'ip'],
+        'subnet' => ['nullable', 'ipv4'],
         'gpu' => ['nullable', 'string', 'max:255'],
         'os' => ['required', 'string', 'max:255'],
         'details' => ['nullable', 'string'],
@@ -1030,6 +1054,21 @@ Route::post('/perangkat/{device}/spec', function (Request $request, Device $devi
         ['device_id' => $device->id],
         $data
     );
+
+    if (!empty($data['ip_address'])) {
+        $device->load('room');
+        $roomName = $device->room?->name ?: ($device->room_id ?: '');
+        $desc = trim(($device->device_name ?: 'Perangkat') . ' - ' . $roomName);
+
+        IpAddr::updateOrCreate(
+            ['ip_address' => $data['ip_address']],
+            [
+                'subnet' => $data['subnet'] ?? null,
+                'status' => 'available',
+                'description' => $desc,
+            ]
+        );
+    }
 
     if ($request->expectsJson()) {
         return response()->json(['message' => 'Spesifikasi tersimpan.']);
