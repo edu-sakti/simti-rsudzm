@@ -291,7 +291,7 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
     }
     Cache::forget('user_invite_' . $kode);
-    return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
+    return redirect('/auth/login')->with('success', 'Pendaftaran berhasil. Silakan login.');
 });
 
 Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
@@ -693,9 +693,34 @@ Route::delete('/isp/{encoded}', function (string $encoded) {
 })->name('isp.destroy')->middleware('auth');
 
 // ---------------- Helpdesk ----------------
-Route::get('/helpdesk', function () {
-    return view('helpdesk.helpdesk');
-})->name('helpdesk.index')->middleware('auth');
+Route::get('/helpdesk', [\App\Http\Controllers\HelpdeskController::class, 'index'])
+    ->name('helpdesk.index')
+    ->middleware('auth');
+
+Route::get('/helpdesk/tambah-ticket', function () {
+    $rooms = \App\Models\Room::query()
+        ->select('id', 'name')
+        ->orderBy('name')
+        ->get();
+    $petugas = \App\Models\User::query()
+        ->select('id', 'name')
+        ->where('role', 'petugas')
+        ->orderBy('name')
+        ->get();
+
+    return view('helpdesk.addticket', [
+        'rooms' => $rooms,
+        'petugas' => $petugas,
+    ]);
+})->name('helpdesk.create')->middleware('auth');
+
+Route::post('/helpdesk/tambah-ticket', [\App\Http\Controllers\HelpdeskController::class, 'store'])
+    ->name('helpdesk.store')
+    ->middleware('auth');
+
+Route::delete('/helpdesk/{ticket}', [\App\Http\Controllers\HelpdeskController::class, 'destroy'])
+    ->name('helpdesk.destroy')
+    ->middleware('auth');
 
 // ---------------- Laporan ----------------
 Route::get('/laporan', function () {
@@ -721,7 +746,7 @@ Route::get('/whatsapp-gateway', function () {
         'waPhone' => $status['phone'] ?? null,
         'waLastActiveAt' => $status['lastActiveAt'] ?? null,
     ]);
-})->name('wa.gateway')->middleware('auth');
+})->name('wa.gateway')->middleware(['auth', 'admin']);
 
 Route::post('/whatsapp-gateway/device/delete', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -734,7 +759,7 @@ Route::post('/whatsapp-gateway/device/delete', function () {
         return redirect()->route('wa.gateway')->with('error', 'Gateway belum berjalan.');
     }
     return redirect()->route('wa.gateway')->with('success', 'Device berhasil dihapus.');
-})->name('wa.gateway.delete')->middleware('auth');
+})->name('wa.gateway.delete')->middleware(['auth', 'admin']);
 
 Route::post('/whatsapp-gateway/connect', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -747,7 +772,7 @@ Route::post('/whatsapp-gateway/connect', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.connect')->middleware('auth');
+})->name('wa.gateway.connect')->middleware(['auth', 'admin']);
 
 Route::post('/whatsapp-gateway/disconnect', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -760,7 +785,7 @@ Route::post('/whatsapp-gateway/disconnect', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.disconnect')->middleware('auth');
+})->name('wa.gateway.disconnect')->middleware(['auth', 'admin']);
 
 Route::post('/whatsapp-gateway/reconnect', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -774,7 +799,7 @@ Route::post('/whatsapp-gateway/reconnect', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.reconnect')->middleware('auth');
+})->name('wa.gateway.reconnect')->middleware(['auth', 'admin']);
 
 Route::get('/whatsapp-gateway/qr', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -787,7 +812,7 @@ Route::get('/whatsapp-gateway/qr', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.qr')->middleware('auth');
+})->name('wa.gateway.qr')->middleware(['auth', 'admin']);
 
 Route::get('/whatsapp-gateway/status', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -800,7 +825,7 @@ Route::get('/whatsapp-gateway/status', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.status')->middleware('auth');
+})->name('wa.gateway.status')->middleware(['auth', 'admin']);
 
 // ---------------- IP Address ----------------
 Route::get('/ip-address', function (Request $request) {
