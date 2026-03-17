@@ -125,4 +125,20 @@
     </div>
   </div>
 </div>
+
+@if(session('ip_error'))
+  @push('scripts')
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            icon: 'error',
+            title: 'IP Address Dipakai',
+            text: @json(session('ip_error'))
+          });
+        }
+      });
+    </script>
+  @endpush
+@endif
 @endsection

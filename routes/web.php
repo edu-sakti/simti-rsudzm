@@ -1103,6 +1103,27 @@ Route::get('/perangkat', function (Request $request) {
         ->paginate(20)
         ->withQueryString();
 
+    $deviceCollection = $devices->getCollection();
+    $descriptions = $deviceCollection->map(function ($device) {
+        $roomName = $device->room->name ?? ($device->room_id ?? '');
+        return trim(($device->device_name ?: 'Perangkat') . ' - ' . $roomName);
+    })->filter()->unique()->values()->all();
+
+    $ipMap = [];
+    if (!empty($descriptions)) {
+        $ipMap = IpAddr::whereIn('description', $descriptions)
+            ->get(['ip_address', 'subnet', 'description'])
+            ->keyBy('description');
+    }
+
+    $deviceCollection = $deviceCollection->map(function ($device) use ($ipMap) {
+        $roomName = $device->room->name ?? ($device->room_id ?? '');
+        $desc = trim(($device->device_name ?: 'Perangkat') . ' - ' . $roomName);
+        $device->ip_info = $ipMap[$desc] ?? null;
+        return $device;
+    });
+    $devices->setCollection($deviceCollection);
+
     $deviceTypes = [
         'CPU',
         'Monitor',
@@ -1156,6 +1177,17 @@ Route::post('/perangkat/tambah-perangkat', function (Request $request) {
 })->name('device.store')->middleware('auth');
 
 Route::delete('/perangkat/{device}', function (Device $device) {
+    $spec = DeviceSpec::where('device_id', $device->id)->first();
+    if ($spec && !empty($spec->ip_address)) {
+        IpAddr::where('ip_address', $spec->ip_address)->delete();
+    }
+    $device->load('room');
+    $roomName = $device->room?->name ?: ($device->room_id ?: '');
+    $desc = trim(($device->device_name ?: 'Perangkat') . ' - ' . $roomName);
+    if ($desc !== '') {
+        IpAddr::where('description', $desc)->delete();
+    }
+    DeviceSpec::where('device_id', $device->id)->delete();
     $device->delete();
     return redirect()->route('device.index')->with('success', 'Perangkat berhasil dihapus.');
 })->name('device.destroy')->middleware('auth');
@@ -1242,21 +1274,30 @@ Route::post('/perangkat/spesifikasi-perangkat', function (Request $request) {
         'details' => ['nullable','string'],
     ]);
 
+    $device = Device::with('room')->find($data['device_id']);
+    $roomName = $device?->room?->name ?: ($device?->room_id ?: '');
+    $desc = trim(($device?->device_name ?: 'Perangkat') . ' - ' . $roomName);
+
+    if (!empty($data['ip_address'])) {
+        $existingIp = IpAddr::where('ip_address', $data['ip_address'])->first();
+        if ($existingIp && $existingIp->description !== $desc) {
+            return back()
+                ->withInput()
+                ->with('ip_error', 'IP address sudah digunakan di ' . ($existingIp->description ?: 'perangkat lain') . '.');
+        }
+    }
+
     DeviceSpec::updateOrCreate(
         ['device_id' => $data['device_id']],
         collect($data)->except('device_id')->toArray()
     );
 
     if (!empty($data['ip_address'])) {
-        $device = Device::with('room')->find($data['device_id']);
-        $roomName = $device?->room?->name ?: ($device?->room_id ?: '');
-        $desc = trim(($device?->device_name ?: 'Perangkat') . ' - ' . $roomName);
-
         IpAddr::updateOrCreate(
             ['ip_address' => $data['ip_address']],
             [
                 'subnet' => $data['subnet'] ?? null,
-                'status' => 'available',
+                'status' => 'used',
                 'description' => $desc,
             ]
         );
@@ -1280,21 +1321,33 @@ Route::post('/perangkat/{device}/spec', function (Request $request, Device $devi
         'details' => ['nullable', 'string'],
     ]);
 
+    $device->load('room');
+    $roomName = $device->room?->name ?: ($device->room_id ?: '');
+    $desc = trim(($device->device_name ?: 'Perangkat') . ' - ' . $roomName);
+
+    if (!empty($data['ip_address'])) {
+        $existingIp = IpAddr::where('ip_address', $data['ip_address'])->first();
+        if ($existingIp && $existingIp->description !== $desc) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'IP address sudah digunakan di ' . ($existingIp->description ?: 'perangkat lain') . '.'], 422);
+            }
+            return back()
+                ->withInput()
+                ->with('ip_error', 'IP address sudah digunakan di ' . ($existingIp->description ?: 'perangkat lain') . '.');
+        }
+    }
+
     DeviceSpec::updateOrCreate(
         ['device_id' => $device->id],
         $data
     );
 
     if (!empty($data['ip_address'])) {
-        $device->load('room');
-        $roomName = $device->room?->name ?: ($device->room_id ?: '');
-        $desc = trim(($device->device_name ?: 'Perangkat') . ' - ' . $roomName);
-
         IpAddr::updateOrCreate(
             ['ip_address' => $data['ip_address']],
             [
                 'subnet' => $data['subnet'] ?? null,
-                'status' => 'available',
+                'status' => 'used',
                 'description' => $desc,
             ]
         );
@@ -1307,6 +1360,20 @@ Route::post('/perangkat/{device}/spec', function (Request $request, Device $devi
 })->name('device.spec.store')->middleware('auth');
 
 Route::delete('/perangkat/spesifikasi-perangkat/{device}', function (Device $device) {
+    $spec = DeviceSpec::where('device_id', $device->id)->first();
+    if ($spec && !empty($spec->ip_address)) {
+        IpAddr::where('ip_address', $spec->ip_address)->update([
+            'status' => 'available',
+        ]);
+    }
+    $device->load('room');
+    $roomName = $device->room?->name ?: ($device->room_id ?: '');
+    $desc = trim(($device->device_name ?: 'Perangkat') . ' - ' . $roomName);
+    if ($desc !== '') {
+        IpAddr::where('description', $desc)->update([
+            'status' => 'available',
+        ]);
+    }
     DeviceSpec::where('device_id', $device->id)->delete();
     return redirect()->route('device.index')->with('success', 'Spesifikasi perangkat berhasil dihapus.');
 })->name('device.spec.delete')->middleware('auth');

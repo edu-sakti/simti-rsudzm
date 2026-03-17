@@ -85,6 +85,8 @@
                               class="btn btn-sm btn-outline-info btn-detail"
                               data-id="{{ $device->id }}"
                               data-spec='@json($device->spec)'
+                              data-ip="{{ $device->ip_info->ip_address ?? '' }}"
+                              data-subnet="{{ $device->ip_info->subnet ?? '' }}"
                               data-name="{{ $device->device_name }}"
                               data-type="{{ $device->device_type }}">
                         Detail
@@ -165,11 +167,15 @@
         currentDeviceId = btn.dataset.id;
 
         if (spec) {
+          const ipAddress = (spec.ip_address ?? btn.dataset.ip) || '-';
+          const subnet = (spec.subnet ?? btn.dataset.subnet) || '-';
           const html = `
             <table class="table table-sm text-start">
               <tr><th>Processor</th><td>${spec.processor ?? '-'}</td></tr>
               <tr><th>RAM</th><td>${spec.ram ?? '-'}</td></tr>
               <tr><th>Storage</th><td>${spec.storage_type ?? '-'} ${spec.storage_capacity ?? ''}</td></tr>
+              <tr><th>IP Address</th><td>${ipAddress}</td></tr>
+              <tr><th>Subnet</th><td>${subnet}</td></tr>
               <tr><th>GPU</th><td>${spec.gpu ?? '-'}</td></tr>
               <tr><th>OS</th><td>${spec.os ?? '-'}</td></tr>
               <tr><th>Detail</th><td>${spec.details ?? '-'}</td></tr>
