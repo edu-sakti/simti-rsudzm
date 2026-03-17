@@ -32,6 +32,9 @@
                 <div class="d-grid gap-2 mt-4">
                     <button type="submit" class="btn btn-lg btn-primary">Masuk</button>
                 </div>
+                <div class="text-center mt-3">
+                    Lupa password? Silakan lakukan <a href="/forget-password" class="text-primary">reset password.</a>
+                </div>
             </form>
         </div>
     </div>

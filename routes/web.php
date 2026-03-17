@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Room;
 use App\Models\Cctv;
@@ -1390,6 +1391,74 @@ Route::get('/auth/login', function () {
 Route::get('/auth/otp', function () {
     return view('auth.otp');
 })->name('auth.otp');
+
+Route::get('/forget-password', function () {
+    return view('auth.forgetpassword');
+})->name('auth.forget');
+
+Route::post('/forget-password', function (Request $request) {
+    $data = $request->validate([
+        'phone' => ['required', 'string'],
+    ]);
+
+    $raw = preg_replace('/\D+/', '', $data['phone']);
+    if (str_starts_with($raw, '0')) {
+        $raw = '62' . substr($raw, 1);
+    } elseif (str_starts_with($raw, '8')) {
+        $raw = '62' . $raw;
+    }
+
+    $user = User::where('phone', $raw)->first();
+    if (!$user) {
+        return back()->withInput()->with('error', 'No HP tidak ditemukan.');
+    }
+
+    $link = url('/change-password/' . $user->id);
+    $message = "Ganti password Anda melalui link berikut:\n{$link}\n\nAbaikan pesan ini jika Anda tidak meminta perubahan password.";
+
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $response = Http::withHeaders([
+            'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+        ])->post($baseUrl . '/send', [
+            'phone' => $raw,
+            'message' => $message,
+        ]);
+        if (!$response->successful()) {
+            return back()->withInput()->with('error', 'Gagal mengirim link reset password.');
+        }
+    } catch (\Throwable $e) {
+        return back()->withInput()->with('error', 'Gateway belum berjalan.');
+    }
+
+    return back()->with('success', 'Link reset password sudah dikirim ke WhatsApp.');
+})->name('auth.forget.send');
+
+Route::get('/change-password/{id}', function (string $id) {
+    $user = User::find($id);
+    if (!$user) {
+        abort(404);
+    }
+    return view('auth.changepassword', ['user' => $user]);
+})->name('auth.change');
+
+Route::post('/change-password/{id}', function (Request $request, string $id) {
+    $user = User::find($id);
+    if (!$user) {
+        abort(404);
+    }
+
+    $data = $request->validate([
+        'password' => ['required', 'string', 'min:8', 'confirmed'],
+    ], [
+        'password.confirmed' => 'Konfirmasi password tidak sama.',
+    ]);
+
+    $user->password = Hash::make($data['password']);
+    $user->save();
+
+    return redirect('/auth/login')->with('success', 'Password berhasil diubah. Silakan login.');
+})->name('auth.change.save');
 
 Route::post('/auth/otp', function (Request $request) {
     $request->validate([
