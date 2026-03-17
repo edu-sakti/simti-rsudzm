@@ -75,7 +75,7 @@ Route::get('/pengguna', function (Request $request) {
 
 Route::get('/pengguna/tambah-link', function (Request $request) {
     $role = $request->query('role');
-    if ($role && !in_array($role, ['manajemen','kepala_ruangan','petugas','petugas_helpdesk'], true)) {
+    if ($role && !in_array($role, ['manajemen','kepala_ruangan','petugas_it','petugas_helpdesk'], true)) {
         abort(400);
     }
     $code = bin2hex(random_bytes(16));
@@ -159,7 +159,7 @@ Route::post('/pengguna', function (Request $request) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
+        'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
@@ -189,8 +189,8 @@ Route::post('/pengguna', function (Request $request) {
         }
     }
 
-    if ($data['role'] === 'staff') {
-        $data['role'] = 'petugas';
+    if (in_array($data['role'], ['staff', 'petugas'], true)) {
+        $data['role'] = 'petugas_it';
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
@@ -230,7 +230,7 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
+        'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
@@ -265,8 +265,8 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         }
     }
 
-    if ($data['role'] === 'staff') {
-        $data['role'] = 'petugas';
+    if (in_array($data['role'], ['staff', 'petugas'], true)) {
+        $data['role'] = 'petugas_it';
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
@@ -317,7 +317,7 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
-        'role' => ['required', 'in:admin,petugas,petugas_helpdesk,manajemen,kepala_ruangan,staff'],
+        'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', Rule::unique('users', 'phone')->ignore($user->username, 'username')],
         'otp_code' => $otpEnabled ? ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
@@ -331,8 +331,8 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     if (empty($data['password'])) {
         unset($data['password']);
     }
-    if ($data['role'] === 'staff') {
-        $data['role'] = 'petugas';
+    if (in_array($data['role'], ['staff', 'petugas'], true)) {
+        $data['role'] = 'petugas_it';
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
@@ -732,7 +732,7 @@ Route::get('/helpdesk/tambah-ticket', function () {
         ->get();
     $petugas = \App\Models\User::query()
         ->select('id', 'name')
-        ->where('role', 'petugas')
+        ->where('role', 'petugas_it')
         ->orderBy('name')
         ->get();
 
@@ -803,7 +803,7 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
     if (!empty($validated['petugas_id'])) {
         $petugas = User::select('id', 'phone')
             ->where('id', $validated['petugas_id'])
-            ->where('role', 'petugas')
+            ->where('role', 'petugas_it')
             ->first();
         if ($petugas && !empty($petugas->phone)) {
             $phone = preg_replace('/\D+/', '', $petugas->phone);

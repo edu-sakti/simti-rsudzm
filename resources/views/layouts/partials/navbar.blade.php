@@ -13,12 +13,12 @@
     <div class="d-flex flex-column lh-1">
         @auth
           @php
-            $role = Auth::user()->role ?? 'staff';
+            $role = Auth::user()->role ?? 'petugas_it';
             $roleLabelMap = [
               'admin' => 'Admin',
-              'petugas' => 'Petugas IT',
+              'petugas_it' => 'Petugas IT',
               'petugas_helpdesk' => 'Petugas Helpdesk',
-              'staff' => 'Petugas',
+              'petugas' => 'Petugas IT',
               'manajemen' => 'Manajemen',
               'kepala_ruangan' => 'Kepala Ruangan',
             ];

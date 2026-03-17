@@ -92,14 +92,14 @@
                   <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                 @endif
                 @if (!isset($invite_code))
-                  <option value="petugas" {{ old('role') === 'petugas' ? 'selected' : '' }}>Petugas IT</option>
+                  <option value="petugas_it" {{ old('role') === 'petugas_it' ? 'selected' : '' }}>Petugas IT</option>
                   <option value="petugas_helpdesk" {{ old('role') === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
                   <option value="manajemen" {{ old('role') === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
                   <option value="kepala_ruangan" {{ old('role') === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
                 @else
                   <option value="manajemen" {{ old('role', $invite_role) === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
                   <option value="kepala_ruangan" {{ old('role', $invite_role) === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
-                  <option value="petugas" {{ old('role', $invite_role) === 'petugas' ? 'selected' : '' }}>Petugas IT</option>
+                  <option value="petugas_it" {{ old('role', $invite_role) === 'petugas_it' ? 'selected' : '' }}>Petugas IT</option>
                   <option value="petugas_helpdesk" {{ old('role', $invite_role) === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
                 @endif
               </select>

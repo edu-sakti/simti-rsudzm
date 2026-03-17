@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             if (!Schema::hasColumn('users', 'role')) {
-                $table->string('role')->default('staff')->after('username');
+                $table->string('role')->default('petugas_it')->after('username');
             }
         });
     }
@@ -30,4 +30,3 @@ return new class extends Migration
         });
     }
 };
-

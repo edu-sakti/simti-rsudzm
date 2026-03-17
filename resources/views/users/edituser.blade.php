@@ -66,14 +66,14 @@
           <div class="col-md-6">
             <label for="edit_role" class="form-label">Role</label>
             <select id="edit_role" name="role" class="form-select" required {{ ($user->role ?? '') === 'admin' ? 'disabled' : '' }}>
-              @php($currentRole = old('role', $user->role ?? 'petugas'))
-              @if($currentRole === 'admin')
-                <option value="admin" selected>Admin</option>
-              @else
-                <option value="admin" {{ $currentRole === 'admin' ? 'selected' : '' }}>Admin</option>
-                <option value="petugas" {{ $currentRole === 'petugas' || $currentRole === 'staff' ? 'selected' : '' }}>Petugas IT</option>
-                <option value="petugas_helpdesk" {{ $currentRole === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
-                <option value="manajemen" {{ $currentRole === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
+            @php($currentRole = old('role', $user->role ?? 'petugas_it'))
+            @if($currentRole === 'admin')
+              <option value="admin" selected>Admin</option>
+            @else
+              <option value="admin" {{ $currentRole === 'admin' ? 'selected' : '' }}>Admin</option>
+              <option value="petugas_it" {{ in_array($currentRole, ['petugas_it','petugas','staff'], true) ? 'selected' : '' }}>Petugas IT</option>
+              <option value="petugas_helpdesk" {{ $currentRole === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
+              <option value="manajemen" {{ $currentRole === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
                 <option value="kepala_ruangan" {{ $currentRole === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
               @endif
             </select>
