@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Crypt;
 use App\Models\User;
 use App\Models\Room;
 use App\Models\Cctv;
@@ -1413,7 +1414,8 @@ Route::post('/forget-password', function (Request $request) {
         return back()->withInput()->with('error', 'No HP tidak ditemukan.');
     }
 
-    $link = url('/change-password/' . $user->id);
+    $token = Crypt::encryptString((string) $user->id);
+    $link = url('/change-password/' . $token);
     $message = "Ganti password Anda melalui link berikut:\n{$link}\n\nAbaikan pesan ini jika Anda tidak meminta perubahan password.";
 
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -1434,15 +1436,25 @@ Route::post('/forget-password', function (Request $request) {
     return back()->with('success', 'Link reset password sudah dikirim ke WhatsApp.');
 })->name('auth.forget.send');
 
-Route::get('/change-password/{id}', function (string $id) {
+Route::get('/change-password/{token}', function (string $token) {
+    try {
+        $id = Crypt::decryptString($token);
+    } catch (\Throwable $e) {
+        abort(404);
+    }
     $user = User::find($id);
     if (!$user) {
         abort(404);
     }
-    return view('auth.changepassword', ['user' => $user]);
+    return view('auth.changepassword', ['user' => $user, 'token' => $token]);
 })->name('auth.change');
 
-Route::post('/change-password/{id}', function (Request $request, string $id) {
+Route::post('/change-password/{token}', function (Request $request, string $token) {
+    try {
+        $id = Crypt::decryptString($token);
+    } catch (\Throwable $e) {
+        abort(404);
+    }
     $user = User::find($id);
     if (!$user) {
         abort(404);

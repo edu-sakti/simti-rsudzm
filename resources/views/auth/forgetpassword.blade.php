@@ -50,7 +50,15 @@
     const success = @json(session('success'));
     const error = @json(session('error'));
     if (success && typeof Swal !== 'undefined') {
-      Swal.fire({ icon: 'success', title: 'Berhasil', text: success });
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: success,
+        timer: 1800,
+        showConfirmButton: false
+      }).then(() => {
+        window.location.href = '/auth/login';
+      });
     }
     if (error && typeof Swal !== 'undefined') {
       Swal.fire({ icon: 'error', title: 'Gagal', text: error });

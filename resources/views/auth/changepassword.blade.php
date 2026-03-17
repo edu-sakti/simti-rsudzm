@@ -17,7 +17,7 @@
                 {{ $errors->first() }}
               </div>
             @endif
-            <form method="POST" action="/change-password/{{ $user->id }}" novalidate>
+            <form method="POST" action="/change-password/{{ $token }}" novalidate>
                 @csrf
                 <div class="mb-3">
                     <label class="form-label">Password Baru</label>
