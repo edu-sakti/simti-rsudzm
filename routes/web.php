@@ -1415,7 +1415,8 @@ Route::post('/forget-password', function (Request $request) {
     }
 
     $token = Crypt::encryptString((string) $user->id);
-    $link = url('/change-password/' . $token);
+    $safeToken = urlencode($token);
+    $link = url('/change-password/' . $safeToken);
     $message = "Ganti password Anda melalui link berikut:\n{$link}\n\nAbaikan pesan ini jika Anda tidak meminta perubahan password.";
 
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -1438,6 +1439,7 @@ Route::post('/forget-password', function (Request $request) {
 
 Route::get('/change-password/{token}', function (string $token) {
     try {
+        $token = urldecode($token);
         $id = Crypt::decryptString($token);
     } catch (\Throwable $e) {
         abort(404);
@@ -1451,6 +1453,7 @@ Route::get('/change-password/{token}', function (string $token) {
 
 Route::post('/change-password/{token}', function (Request $request, string $token) {
     try {
+        $token = urldecode($token);
         $id = Crypt::decryptString($token);
     } catch (\Throwable $e) {
         abort(404);
