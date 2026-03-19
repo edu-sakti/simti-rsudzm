@@ -46,7 +46,7 @@ Route::get('/', function () {
     return view('home');
 });
 
-Route::get('/home', function () {
+Route::get('/dashboard', function () {
     $totalTickets = \App\Models\HelpdeskTicket::count();
     $pendingTickets = \App\Models\HelpdeskTicket::where('status', 'open')->count();
     $progressTickets = \App\Models\HelpdeskTicket::whereIn('status', ['assigned', 'in_progress'])->count();
@@ -54,6 +54,167 @@ Route::get('/home', function () {
 
     return view('dashboard', compact('totalTickets', 'pendingTickets', 'progressTickets', 'doneTickets'));
 })->middleware(['auth', 'permission:dashboard,read']);
+
+// ---------------- Persuratan ----------------
+Route::get('/persuratan/surat-masuk', function () {
+    return view('persuratan.surat-masuk');
+})->middleware(['auth', 'permission:surat_masuk,read']);
+
+Route::get('/persuratan/surat-keluar', function () {
+    return view('persuratan.surat-keluar');
+})->middleware(['auth', 'permission:surat_keluar,read']);
+
+Route::get('/persuratan/disposisi', function () {
+    return view('persuratan.disposisi');
+})->middleware(['auth', 'permission:disposisi,read']);
+
+Route::get('/persuratan/arsip-surat', function () {
+    return view('persuratan.arsip-surat');
+})->middleware(['auth', 'permission:arsip_surat,read']);
+
+// ---------------- Pengaduan ----------------
+Route::get('/pengaduan/data', function () {
+    return view('pengaduan.data-pengaduan');
+})->middleware(['auth', 'permission:pengaduan_data,read']);
+
+Route::get('/pengaduan/kategori', function () {
+    return view('pengaduan.kategori');
+})->middleware(['auth', 'permission:pengaduan_kategori,read']);
+
+// ---------------- Kepegawaian ----------------
+Route::get('/kepegawaian/data-pegawai', function () {
+    return view('kepegawaian.data-pegawai');
+})->middleware(['auth', 'permission:data_pegawai,read']);
+
+Route::get('/kepegawaian/pns', function () {
+    return view('kepegawaian.pns');
+})->middleware(['auth', 'permission:pegawai_pns,read']);
+
+Route::get('/kepegawaian/pppk', function () {
+    return view('kepegawaian.pppk');
+})->middleware(['auth', 'permission:pegawai_pppk,read']);
+
+Route::get('/kepegawaian/jabatan', function () {
+    return view('kepegawaian.jabatan');
+})->middleware(['auth', 'permission:jabatan,read']);
+
+Route::get('/kepegawaian/unit-ruangan', function () {
+    return view('kepegawaian.unit-ruangan');
+})->middleware(['auth', 'permission:unit_ruangan,read']);
+
+Route::get('/kepegawaian/riwayat', function () {
+    return view('kepegawaian.riwayat.index');
+})->middleware(['auth', 'permission:riwayat_pegawai,read']);
+
+Route::get('/kepegawaian/riwayat/pendidikan', function () {
+    return view('kepegawaian.riwayat.pendidikan');
+})->middleware(['auth', 'permission:riwayat_pendidikan,read']);
+
+Route::get('/kepegawaian/riwayat/pangkat-golongan', function () {
+    return view('kepegawaian.riwayat.pangkat-golongan');
+})->middleware(['auth', 'permission:riwayat_pangkat,read']);
+
+Route::get('/kepegawaian/riwayat/mutasi', function () {
+    return view('kepegawaian.riwayat.mutasi');
+})->middleware(['auth', 'permission:riwayat_mutasi,read']);
+
+Route::get('/kepegawaian/riwayat/pelatihan', function () {
+    return view('kepegawaian.riwayat.pelatihan');
+})->middleware(['auth', 'permission:riwayat_pelatihan,read']);
+
+Route::get('/kepegawaian/legalitas/sip', function () {
+    return view('kepegawaian.legalitas.sip');
+})->middleware(['auth', 'permission:legalitas_sip,read']);
+
+Route::get('/kepegawaian/legalitas/str', function () {
+    return view('kepegawaian.legalitas.str');
+})->middleware(['auth', 'permission:legalitas_str,read']);
+
+// ---------------- Logs ----------------
+Route::get('/logs', function () {
+    return view('logs.index');
+})->middleware(['auth', 'permission:log_aktivitas,read']);
+
+Route::get('/apps', function () {
+    return view('apps');
+})->name('apps')->middleware('auth');
+
+Route::get('/apps/launch/{app}', function (Request $request, string $app) {
+    $app = strtolower($app);
+    $apps = [
+        'helpdesk' => [
+            ['menu' => 'dashboard', 'url' => url('/dashboard')],
+            ['menu' => 'helpdesk', 'url' => url('/helpdesk')],
+            ['menu' => 'laporan', 'url' => url('/laporan')],
+        ],
+        'inventaris' => [
+            ['menu' => 'perangkat', 'url' => url('/perangkat')],
+            ['menu' => 'ruangan', 'url' => url('/ruangan')],
+            ['menu' => 'spesifikasi_perangkat', 'url' => url('/perangkat/spesifikasi-perangkat')],
+        ],
+        'jaringan' => [
+            ['menu' => 'ip_address', 'url' => url('/ip-address')],
+            ['menu' => 'isp', 'url' => url('/isp')],
+        ],
+        'persuratan' => [
+            ['menu' => 'surat_masuk', 'url' => url('/persuratan/surat-masuk')],
+            ['menu' => 'surat_keluar', 'url' => url('/persuratan/surat-keluar')],
+            ['menu' => 'disposisi', 'url' => url('/persuratan/disposisi')],
+            ['menu' => 'arsip_surat', 'url' => url('/persuratan/arsip-surat')],
+        ],
+        'pengaduan' => [
+            ['menu' => 'pengaduan_data', 'url' => url('/pengaduan/data')],
+            ['menu' => 'pengaduan_kategori', 'url' => url('/pengaduan/kategori')],
+        ],
+        'kepegawaian' => [
+            ['menu' => 'data_pegawai', 'url' => url('/kepegawaian/data-pegawai')],
+            ['menu' => 'pegawai_pns', 'url' => url('/kepegawaian/pns')],
+            ['menu' => 'pegawai_pppk', 'url' => url('/kepegawaian/pppk')],
+            ['menu' => 'jabatan', 'url' => url('/kepegawaian/jabatan')],
+            ['menu' => 'unit_ruangan', 'url' => url('/kepegawaian/unit-ruangan')],
+            ['menu' => 'riwayat_pegawai', 'url' => url('/kepegawaian/riwayat')],
+            ['menu' => 'riwayat_pendidikan', 'url' => url('/kepegawaian/riwayat/pendidikan')],
+            ['menu' => 'riwayat_pangkat', 'url' => url('/kepegawaian/riwayat/pangkat-golongan')],
+            ['menu' => 'riwayat_mutasi', 'url' => url('/kepegawaian/riwayat/mutasi')],
+            ['menu' => 'riwayat_pelatihan', 'url' => url('/kepegawaian/riwayat/pelatihan')],
+            ['menu' => 'legalitas_sip', 'url' => url('/kepegawaian/legalitas/sip')],
+            ['menu' => 'legalitas_str', 'url' => url('/kepegawaian/legalitas/str')],
+        ],
+        'monitoring' => [
+            ['menu' => 'cctv', 'url' => url('/cctv')],
+        ],
+        'manajemen-pengguna' => [
+            ['menu' => 'pengguna', 'url' => url('/pengguna'), 'admin_only' => true],
+            ['menu' => 'hak_akses', 'url' => url('/hak-akses'), 'admin_only' => true],
+        ],
+        'integrasi' => [
+            ['menu' => 'wa_gateway', 'url' => url('/whatsapp-gateway'), 'admin_only' => true],
+            ['menu' => 'log_aktivitas', 'url' => url('/logs'), 'admin_only' => true],
+        ],
+    ];
+
+    if (!isset($apps[$app])) {
+        abort(404);
+    }
+
+    $user = auth()->user();
+    $isAdmin = (bool) ($user->is_admin ?? false) || ($user->role ?? '') === 'admin';
+    $can = function (string $menu) use ($user) {
+        return \App\Support\Permission::can($user, $menu, 'read');
+    };
+
+    foreach ($apps[$app] as $item) {
+        if (($item['admin_only'] ?? false) && !$isAdmin) {
+            continue;
+        }
+        if ($isAdmin || $can($item['menu'])) {
+            $request->session()->put('active_app', $app);
+            return redirect()->to($item['url']);
+        }
+    }
+
+    return redirect()->route('apps')->with('error', 'Anda tidak memiliki akses ke aplikasi tersebut.');
+})->middleware('auth');
 
 $roomCategories = [
     'Rawat Jalan' => 'RJ',
@@ -94,22 +255,52 @@ if (!function_exists('hakAksesMenuGroups')) {
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'actions' => ['read']],
                 ['key' => 'laporan', 'label' => 'Laporan', 'actions' => ['read']],
             ],
-            'Master Data' => [
-                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read','create','update','delete']],
-                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read','create','update','delete']],
-                ['key' => 'spesifikasi_perangkat', 'label' => 'Spesifikasi Perangkat', 'actions' => ['read','create','update','delete']],
-                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read','create','update','delete']],
-                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
-                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read','create','update','delete']],
-            ],
             'Helpdesk' => [
-                ['key' => 'helpdesk', 'label' => 'Helpdesk', 'actions' => ['read','create','update','delete']],
-                ['key' => 'detail_ticket', 'label' => 'Detail Ticket', 'actions' => ['read']],
+                ['key' => 'helpdesk', 'label' => 'Tiket', 'actions' => ['read','create','update','delete']],
             ],
-            'Pengguna & Sistem' => [
+            'Inventaris' => [
+                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read','create','update','delete']],
+                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'spesifikasi_perangkat', 'label' => 'Spesifikasi', 'actions' => ['read','create','update','delete']],
+            ],
+            'Jaringan' => [
+                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read','create','update','delete']],
+                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read','create','update','delete']],
+            ],
+            'Persuratan' => [
+                ['key' => 'surat_masuk', 'label' => 'Surat Masuk', 'actions' => ['read','create','update','delete']],
+                ['key' => 'surat_keluar', 'label' => 'Surat Keluar', 'actions' => ['read','create','update','delete']],
+                ['key' => 'disposisi', 'label' => 'Disposisi', 'actions' => ['read','create','update','delete']],
+                ['key' => 'arsip_surat', 'label' => 'Arsip Surat', 'actions' => ['read','create','update','delete']],
+            ],
+            'Pengaduan' => [
+                ['key' => 'pengaduan_data', 'label' => 'Data Pengaduan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'pengaduan_kategori', 'label' => 'Kategori', 'actions' => ['read','create','update','delete']],
+            ],
+            'Kepegawaian' => [
+                ['key' => 'data_pegawai', 'label' => 'Data Pegawai', 'actions' => ['read','create','update','delete']],
+                ['key' => 'pegawai_pns', 'label' => 'PNS', 'actions' => ['read','create','update','delete']],
+                ['key' => 'pegawai_pppk', 'label' => 'PPPK', 'actions' => ['read','create','update','delete']],
+                ['key' => 'jabatan', 'label' => 'Jabatan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'unit_ruangan', 'label' => 'Unit / Ruangan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'riwayat_pegawai', 'label' => 'Riwayat Pegawai', 'actions' => ['read','create','update','delete']],
+                ['key' => 'riwayat_pendidikan', 'label' => 'Pendidikan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'riwayat_pangkat', 'label' => 'Pangkat / Golongan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'riwayat_mutasi', 'label' => 'Mutasi', 'actions' => ['read','create','update','delete']],
+                ['key' => 'riwayat_pelatihan', 'label' => 'Pelatihan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'legalitas_sip', 'label' => 'SIP', 'actions' => ['read','create','update','delete']],
+                ['key' => 'legalitas_str', 'label' => 'STR', 'actions' => ['read','create','update','delete']],
+            ],
+            'CCTV' => [
+                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
+            ],
+            'Pengguna' => [
                 ['key' => 'pengguna', 'label' => 'Pengguna', 'actions' => ['read','create','update','delete']],
-                ['key' => 'wa_gateway', 'label' => 'WA Gateway', 'actions' => ['read','update']],
                 ['key' => 'hak_akses', 'label' => 'Hak Akses', 'actions' => ['read','update']],
+            ],
+            'Integrasi' => [
+                ['key' => 'wa_gateway', 'label' => 'WA Gateway', 'actions' => ['read','update']],
+                ['key' => 'log_aktivitas', 'label' => 'Log Aktivitas', 'actions' => ['read']],
             ],
         ];
     }
@@ -1804,7 +1995,7 @@ Route::post('/auth/otp', function (Request $request) {
     $request->session()->regenerate();
     $request->session()->forget(['otp_login_code', 'otp_login_user', 'otp_login_expires']);
 
-    return redirect()->intended('/home');
+    return redirect()->intended('/apps');
 })->name('auth.otp.verify');
 
 Route::post('/auth/otp/resend', function (Request $request) {
@@ -1865,7 +2056,7 @@ Route::post('/auth/login', function (Request $request) {
         if (!filter_var(env('OTP_LOGIN_ENABLED', true), FILTER_VALIDATE_BOOLEAN)) {
             Auth::login($user);
             $request->session()->regenerate();
-            return redirect()->intended('/home');
+            return redirect()->intended('/apps');
         }
 
         $length = (int) (env('OTP_LENGTH') ?: 6);

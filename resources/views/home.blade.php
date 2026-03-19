@@ -18,7 +18,7 @@
     </p>
 
 @auth
-<a href="{{ url('/home') }}" class="continue-application mt-1">
+<a href="{{ url('/dashboard') }}" class="continue-application mt-1">
     <div>
         <div class="pencil"></div>
         <div class="folder">
