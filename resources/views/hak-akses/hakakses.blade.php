@@ -25,7 +25,7 @@
 
   <div class="card mb-3 hak-akses-card">
     <div class="card-header bg-primary text-white">
-      <h5 class="card-title mb-0">Konfigurasi Hak Akses</h5>
+      <h5 class="card-title mb-0 text-white">Konfigurasi Hak Akses</h5>
     </div>
     <div class="card-body">
       <div class="row g-3 align-items-end">
@@ -51,7 +51,7 @@
             <i data-feather="save"></i> Simpan
           </button>
           <button class="btn btn-outline-primary btn-sm" type="button" id="refreshRoleBtn">
-            <i data-feather="refresh-cw"></i> Refresh role
+            <i data-feather="refresh-cw"></i> Reset
           </button>
         </div>
       </div>
@@ -219,7 +219,22 @@
     }
 
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', loadPermissions);
+      refreshBtn.addEventListener('click', async function () {
+        const role = roleSelect.value;
+        const response = await fetch('/hak-akses/permissions/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: JSON.stringify({ role, value: false }),
+        });
+        if (!response.ok) {
+          showError('Gagal mereset hak akses.');
+          return;
+        }
+        await loadPermissions();
+      });
     }
 
     if (saveBtn) {
