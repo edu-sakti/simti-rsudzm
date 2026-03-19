@@ -11,14 +11,16 @@
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<h5 class="card-title mb-0">Data Helpdesk</h5>
 					<div class="d-flex gap-2">
-						<a href="{{ url('/helpdesk/tambah-ticket') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-							<i data-feather="plus"></i>
-							<span>Tambah</span>
-						</a>
-						<a href="#" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
-							<i data-feather="send"></i>
-							<span>Request</span>
-						</a>
+						@permission('helpdesk', 'create')
+							<a href="{{ url('/helpdesk/tambah-ticket') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+								<i data-feather="plus"></i>
+								<span>Tambah</span>
+							</a>
+							<a href="#" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+								<i data-feather="send"></i>
+								<span>Request</span>
+							</a>
+						@endpermission
 					</div>
 				</div>
 				<div class="card-body">
@@ -34,7 +36,7 @@
 									<th>Pelapor</th>
 									<th>Ruangan</th>
 									<th>Kategori</th>
-									<th>Sub Kategori</th>
+									<th>Perangkat</th>
 									<th>Kendala</th>
 									<th>Prioritas</th>
 									<th>Petugas</th>
@@ -51,44 +53,64 @@
 										<td>{{ $ticket->pelapor }}</td>
 										<td>{{ $ticket->room_name ?? '-' }}</td>
 										<td>{{ ucfirst($ticket->kategori) }}</td>
-										<td>{{ $ticket->sub_kategori ? ucfirst(str_replace('_',' ', $ticket->sub_kategori)) : '-' }}</td>
+										<td>
+											@if($ticket->device_name)
+												{{ $ticket->device_name }} ({{ $ticket->device_id }})
+											@else
+												-
+											@endif
+										</td>
 										<td>{{ $ticket->kendala }}</td>
 										<td>{{ ucfirst($ticket->prioritas) }}</td>
 										<td>{{ $ticket->petugas_name ?? '-' }}</td>
 										<td>
 											@php
-												$statusMap = [
-													'open' => 'Terbuka',
-													'assigned' => 'Ditugaskan',
-													'in_progress' => 'Dalam Proses',
-													'resolved' => 'Terselesaikan',
-													'closed' => 'Ditutup',
-												];
+												$statusKey = $ticket->status ?? 'open';
+												$statusLabel = 'Open';
+												$statusClass = 'bg-warning text-dark';
+
+												if (in_array($statusKey, ['assigned', 'in_progress', 'progress'], true)) {
+													$statusLabel = 'Progress';
+													$statusClass = 'bg-primary';
+												} elseif (in_array($statusKey, ['resolved', 'done'], true)) {
+													$statusLabel = 'Done';
+													$statusClass = 'bg-success';
+												} elseif ($statusKey === 'closed') {
+													$statusLabel = 'Closed';
+													$statusClass = 'bg-secondary';
+												}
 											@endphp
-											{{ $statusMap[$ticket->status] ?? $ticket->status }}
+											<span class="badge {{ $statusClass }}">{{ $statusLabel }}</span>
 										</td>
 										<td>{{ $ticket->keterangan ?? '-' }}</td>
 										<td>
 											<div class="d-flex flex-wrap gap-2">
-												<a href="{{ route('helpdesk.show', $ticket->no_ticket) }}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
+												<a href="{{ route('helpdesk.show.internal', $ticket->no_ticket) }}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
 													<i data-feather="info"></i> Detail
 												</a>
-												<a href="#" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
-													<i data-feather="edit-2"></i> Edit
-												</a>
-												<a href="#" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
-													<i data-feather="play"></i> Proses
-												</a>
-												<a href="#" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1">
-													<i data-feather="check-circle"></i> Selesai
-												</a>
-												<form method="POST" action="{{ route('helpdesk.destroy', $ticket->id) }}" class="d-inline">
-													@csrf
-													@method('DELETE')
-													<button type="submit" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 js-delete-ticket">
-														<i data-feather="trash-2"></i> Hapus
-													</button>
-												</form>
+												@permission('helpdesk', 'update')
+													<a href="#" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
+														<i data-feather="edit-2"></i> Edit
+													</a>
+													@php($userRole = auth()->user()->role ?? '')
+													@if(in_array($userRole, ['admin', 'petugas_it'], true))
+														<a href="#" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
+															<i data-feather="play"></i> Proses
+														</a>
+													@endif
+													<a href="#" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1">
+														<i data-feather="check-circle"></i> Selesai
+													</a>
+												@endpermission
+												@permission('helpdesk', 'delete')
+													<form method="POST" action="{{ route('helpdesk.destroy', $ticket->id) }}" class="d-inline">
+														@csrf
+														@method('DELETE')
+														<button type="submit" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1 js-delete-ticket">
+															<i data-feather="trash-2"></i> Hapus
+														</button>
+													</form>
+												@endpermission
 											</div>
 										</td>
 									</tr>

@@ -28,6 +28,7 @@ class User extends Authenticatable
         'phone',
         'role',
         'room_id',
+        'jabatan_id',
         'password',
     ];
 

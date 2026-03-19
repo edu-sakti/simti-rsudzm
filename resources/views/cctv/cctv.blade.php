@@ -10,10 +10,12 @@
     <div class="card shadow-sm table-card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">Tabel CCTV</h5>
-        <a href="{{ url('/cctv/tambah') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-          <i data-feather="plus"></i>
-          <span>Tambah CCTV</span>
-        </a>
+        @permission('cctv', 'create')
+          <a href="{{ url('/cctv/tambah') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+            <i data-feather="plus"></i>
+            <span>Tambah CCTV</span>
+          </a>
+        @endpermission
       </div>
       <div class="card-body">
         <form method="GET" action="{{ route('cctv.index') }}" class="mb-3">
@@ -61,13 +63,16 @@
                         <i data-feather="video"></i>
                         <span>Live</span>
                       </a>
-                      <a href="{{ route('cctv.edit', encrypt($cctv->id)) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                      <form action="{{ route('cctv.destroy', encrypt($cctv->id)) }}" method="POST" class="d-inline js-delete-cctv">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                >Hapus</button>
-                      </form>
+                      @permission('cctv', 'update')
+                        <a href="{{ route('cctv.edit', encrypt($cctv->id)) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                      @endpermission
+                      @permission('cctv', 'delete')
+                        <form action="{{ route('cctv.destroy', encrypt($cctv->id)) }}" method="POST" class="d-inline js-delete-cctv">
+                          @csrf
+                          @method('DELETE')
+                          <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                        </form>
+                      @endpermission
                     </div>
                   </td>
                 </tr>

@@ -5,64 +5,92 @@
 		</a>
 
 		<ul class="sidebar-nav">
-			@php($role = auth()->user()->role ?? null)
+			@php
+				$role = auth()->user()->role ?? null;
+				$permissionMap = collect();
+				if ($role && $role !== 'admin') {
+					$permissionMap = \App\Models\RolePermission::where('role', $role)->get()->keyBy('menu');
+				}
+				$canMenu = function (string $key) use ($role, $permissionMap) {
+					if ($role === 'admin') {
+						return true;
+					}
+					return (bool) ($permissionMap[$key]->can_read ?? false);
+				};
+			@endphp
 			@if ($role === 'kepala_ruangan')
 				<li class="sidebar-item {{ request()->is('home') ? 'active' : '' }}">
-					<a class="sidebar-link" href="{{ url('home') }}">
-						<i class="align-middle" data-feather="home"></i>
-						<span class="align-middle">Dashboard</span>
-					</a>
+					@if($canMenu('dashboard'))
+						<a class="sidebar-link" href="{{ url('home') }}">
+							<i class="align-middle" data-feather="home"></i>
+							<span class="align-middle">Dashboard</span>
+						</a>
+					@endif
 				</li>
 
 				<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
-					<a class="sidebar-link" href="{{ url('/helpdesk') }}">
-						<i class="align-middle" data-feather="message-circle"></i>
-						<span class="align-middle">Helpdesk</span>
-					</a>
+					@if($canMenu('helpdesk'))
+						<a class="sidebar-link" href="{{ url('/helpdesk') }}">
+							<i class="align-middle" data-feather="message-circle"></i>
+							<span class="align-middle">Helpdesk</span>
+						</a>
+					@endif
 				</li>
 
 				<li class="sidebar-item {{ request()->is('laporan') ? 'active' : '' }}">
-					<a class="sidebar-link" href="{{ url('laporan') }}">
-						<i class="align-middle" data-feather="clipboard"></i>
-						<span class="align-middle">Laporan</span>
-					</a>
+					@if($canMenu('laporan'))
+						<a class="sidebar-link" href="{{ url('laporan') }}">
+							<i class="align-middle" data-feather="clipboard"></i>
+							<span class="align-middle">Laporan</span>
+						</a>
+					@endif
 				</li>
 			@else
 
 			<li class="sidebar-item {{ request()->is('home') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('home') }}">
-					<i class="align-middle" data-feather="home"></i>
-					<span class="align-middle">Dashboard</span>
-				</a>
+				@if($canMenu('dashboard'))
+					<a class="sidebar-link" href="{{ url('home') }}">
+						<i class="align-middle" data-feather="home"></i>
+						<span class="align-middle">Dashboard</span>
+					</a>
+				@endif
 			</li>
 
 			<li class="sidebar-item {{ request()->is('ip-address') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ route('ipaddr.index') }}">
-					<i class="align-middle" data-feather="map-pin"></i>
-					<span class="align-middle">IP Address</span>
-				</a>
+				@if($canMenu('ip_address'))
+					<a class="sidebar-link" href="{{ route('ipaddr.index') }}">
+						<i class="align-middle" data-feather="map-pin"></i>
+						<span class="align-middle">IP Address</span>
+					</a>
+				@endif
 			</li>
 
 			<li class="sidebar-item {{ request()->is('perangkat') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ route('device.index') }}">
-					<i class="align-middle" data-feather="server"></i>
-					<span class="align-middle">Perangkat</span>
-				</a>
+				@if($canMenu('perangkat'))
+					<a class="sidebar-link" href="{{ route('device.index') }}">
+						<i class="align-middle" data-feather="server"></i>
+						<span class="align-middle">Perangkat</span>
+					</a>
+				@endif
 			</li>
 
 			<li class="sidebar-item {{ request()->is('isp') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('isp') }}">
-					<i class="align-middle" data-feather="globe"></i>
-					<span class="align-middle">ISP</span>
-				</a>
+				@if($canMenu('isp'))
+					<a class="sidebar-link" href="{{ url('isp') }}">
+						<i class="align-middle" data-feather="globe"></i>
+						<span class="align-middle">ISP</span>
+					</a>
+				@endif
 			</li>
 
 
 			<li class="sidebar-item {{ request()->is('cctv') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('cctv') }}">
-					<i class="align-middle" data-feather="video"></i>
-					<span class="align-middle">CCTV</span>
-				</a>
+				@if($canMenu('cctv'))
+					<a class="sidebar-link" href="{{ url('cctv') }}">
+						<i class="align-middle" data-feather="video"></i>
+						<span class="align-middle">CCTV</span>
+					</a>
+				@endif
 			</li>
 
 
@@ -70,10 +98,12 @@
 			
 
 			<li class="sidebar-item {{ request()->is('ruangan*') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('/ruangan') }}">
-					<i class="align-middle" data-feather="layout"></i>
-					<span class="align-middle">Ruangan</span>
-				</a>
+				@if($canMenu('ruangan'))
+					<a class="sidebar-link" href="{{ url('/ruangan') }}">
+						<i class="align-middle" data-feather="layout"></i>
+						<span class="align-middle">Ruangan</span>
+					</a>
+				@endif
 			</li>
 
 			@if(auth()->check() && auth()->user()->role === 'admin')
@@ -92,17 +122,21 @@
 			@endif
 			
 			<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('/helpdesk') }}">
-					<i class="align-middle" data-feather="message-circle"></i>
-					<span class="align-middle">Helpdesk</span>
-				</a>
+				@if($canMenu('helpdesk'))
+					<a class="sidebar-link" href="{{ url('/helpdesk') }}">
+						<i class="align-middle" data-feather="message-circle"></i>
+						<span class="align-middle">Helpdesk</span>
+					</a>
+				@endif
 			</li>
 
 			<li class="sidebar-item {{ request()->is('laporan') ? 'active' : '' }}">
-				<a class="sidebar-link" href="{{ url('laporan') }}">
-					<i class="align-middle" data-feather="clipboard"></i>
-					<span class="align-middle">Laporan</span>
-				</a>
+				@if($canMenu('laporan'))
+					<a class="sidebar-link" href="{{ url('laporan') }}">
+						<i class="align-middle" data-feather="clipboard"></i>
+						<span class="align-middle">Laporan</span>
+					</a>
+				@endif
 			</li>
 
 			@if(auth()->check() && auth()->user()->role === 'admin')

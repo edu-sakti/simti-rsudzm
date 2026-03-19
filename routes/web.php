@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Room;
 use App\Models\Cctv;
@@ -19,14 +20,40 @@ use App\Models\IpAddr;
 use App\Models\Device;
 use App\Models\DeviceSpec;
 use App\Models\HelpdeskTicket;
+use App\Models\RolePermission;
+
+if (!function_exists('ticket_token_encode')) {
+    function ticket_token_encode(string $value): string
+    {
+        $encrypted = Crypt::encryptString($value);
+        return rtrim(strtr($encrypted, '+/', '-_'), '=');
+    }
+}
+
+if (!function_exists('ticket_token_decode')) {
+    function ticket_token_decode(string $token): string
+    {
+        $token = strtr($token, '-_', '+/');
+        $pad = strlen($token) % 4;
+        if ($pad > 0) {
+            $token .= str_repeat('=', 4 - $pad);
+        }
+        return Crypt::decryptString($token);
+    }
+}
 
 Route::get('/', function () {
     return view('home');
 });
 
 Route::get('/home', function () {
-    return view('dashboard');
-})->middleware('auth');
+    $totalTickets = \App\Models\HelpdeskTicket::count();
+    $pendingTickets = \App\Models\HelpdeskTicket::where('status', 'open')->count();
+    $progressTickets = \App\Models\HelpdeskTicket::whereIn('status', ['assigned', 'in_progress'])->count();
+    $doneTickets = \App\Models\HelpdeskTicket::whereIn('status', ['resolved', 'closed'])->count();
+
+    return view('dashboard', compact('totalTickets', 'pendingTickets', 'progressTickets', 'doneTickets'));
+})->middleware(['auth', 'permission:dashboard,read']);
 
 $roomCategories = [
     'Rawat Jalan' => 'RJ',
@@ -56,6 +83,35 @@ if (!function_exists('generateRoomCode')) {
         }
 
         return sprintf('%s-%02d', $prefix, $next);
+    }
+}
+
+if (!function_exists('hakAksesMenuGroups')) {
+    function hakAksesMenuGroups(): array
+    {
+        return [
+            'Umum' => [
+                ['key' => 'dashboard', 'label' => 'Dashboard', 'actions' => ['read']],
+                ['key' => 'laporan', 'label' => 'Laporan', 'actions' => ['read']],
+            ],
+            'Master Data' => [
+                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read','create','update','delete']],
+                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read','create','update','delete']],
+                ['key' => 'spesifikasi_perangkat', 'label' => 'Spesifikasi Perangkat', 'actions' => ['read','create','update','delete']],
+                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read','create','update','delete']],
+                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
+                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read','create','update','delete']],
+            ],
+            'Helpdesk' => [
+                ['key' => 'helpdesk', 'label' => 'Helpdesk', 'actions' => ['read','create','update','delete']],
+                ['key' => 'detail_ticket', 'label' => 'Detail Ticket', 'actions' => ['read']],
+            ],
+            'Pengguna & Sistem' => [
+                ['key' => 'pengguna', 'label' => 'Pengguna', 'actions' => ['read','create','update','delete']],
+                ['key' => 'wa_gateway', 'label' => 'WA Gateway', 'actions' => ['read','update']],
+                ['key' => 'hak_akses', 'label' => 'Hak Akses', 'actions' => ['read','update']],
+            ],
+        ];
     }
 }
 
@@ -163,6 +219,7 @@ Route::post('/pengguna', function (Request $request) {
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
         'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
+        'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
@@ -196,6 +253,9 @@ Route::post('/pengguna', function (Request $request) {
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
+    }
+    if ($data['role'] !== 'manajemen') {
+        $data['jabatan_id'] = null;
     }
 
     unset($data['otp_code']);
@@ -234,6 +294,7 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
         'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
+        'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
@@ -272,6 +333,9 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
+    }
+    if ($data['role'] !== 'manajemen') {
+        $data['jabatan_id'] = null;
     }
 
     unset($data['otp_code'], $data['invite_code']);
@@ -321,6 +385,7 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
         'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
+        'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', Rule::unique('users', 'phone')->ignore($user->username, 'username')],
         'otp_code' => $otpEnabled ? ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['nullable', 'string', 'min:8'],
@@ -338,6 +403,9 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
+    }
+    if ($data['role'] !== 'manajemen') {
+        $data['jabatan_id'] = null;
     }
 
     $phoneChanged = isset($data['phone']) && $data['phone'] !== $user->phone;
@@ -429,11 +497,11 @@ Route::get('/ruangan', function (Request $request) use ($roomCategories) {
         'selectedKategori' => $kategori,
         'categories' => $categories,
     ]);
-})->name('rooms.index')->middleware('auth');
+})->name('rooms.index')->middleware(['auth', 'permission:ruangan,read']);
 
 Route::get('/ruangan/tambah', function () use ($roomCategories) {
     return view('ruangan.addruangan', ['categories' => $roomCategories]);
-})->name('rooms.create')->middleware('auth');
+})->name('rooms.create')->middleware(['auth', 'permission:ruangan,create']);
 
 Route::post('/ruangan', function (Request $request) use ($roomCategories) {
     $data = $request->validate([
@@ -450,7 +518,7 @@ Route::post('/ruangan', function (Request $request) use ($roomCategories) {
     ]);
 
     return redirect()->route('rooms.index')->with('success', 'Ruangan berhasil ditambahkan.');
-})->name('rooms.store')->middleware('auth');
+})->name('rooms.store')->middleware(['auth', 'permission:ruangan,create']);
 
 Route::get('/ruangan/{encoded}/edit', function (string $encoded) use ($roomCategories) {
     try {
@@ -460,7 +528,7 @@ Route::get('/ruangan/{encoded}/edit', function (string $encoded) use ($roomCateg
     }
     $room = Room::findOrFail($roomId);
     return view('ruangan.editruangan', ['room' => $room, 'encoded' => $encoded, 'categories' => $roomCategories]);
-})->name('rooms.edit')->middleware('auth');
+})->name('rooms.edit')->middleware(['auth', 'permission:ruangan,update']);
 
 Route::put('/ruangan/{encoded}', function (Request $request, string $encoded) use ($roomCategories) {
     try {
@@ -482,7 +550,7 @@ Route::put('/ruangan/{encoded}', function (Request $request, string $encoded) us
     $room->update($data);
 
     return redirect()->route('rooms.index')->with('success', 'Ruangan berhasil diperbarui.');
-})->name('rooms.update')->middleware('auth');
+})->name('rooms.update')->middleware(['auth', 'permission:ruangan,update']);
 
 Route::delete('/ruangan/{encoded}', function (string $encoded) {
     try {
@@ -502,12 +570,114 @@ Route::delete('/ruangan/{encoded}', function (string $encoded) {
     }
 
     return redirect()->route('rooms.index')->with('success', 'Ruangan berhasil dihapus.');
-})->name('rooms.destroy')->middleware('auth');
+})->name('rooms.destroy')->middleware(['auth', 'permission:ruangan,delete']);
 
 // ---------------- Hak Akses ----------------
 Route::get('/hak-akses', function () {
-    return view('hak-akses.hakakses');
+    $menuGroups = hakAksesMenuGroups();
+    return view('hak-akses.hakakses', compact('menuGroups'));
 })->name('hakakses.index')->middleware(['auth', 'admin']);
+
+Route::get('/hak-akses/permissions', function (Request $request) {
+    $data = $request->validate([
+        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+    ]);
+
+    $menuGroups = hakAksesMenuGroups();
+    $menus = collect($menuGroups)->flatten(1)->pluck('key')->values();
+    $existing = RolePermission::where('role', $data['role'])->get()->keyBy('menu');
+
+    $permissions = [];
+    foreach ($menus as $menu) {
+        $row = $existing->get($menu);
+        $permissions[$menu] = [
+            'can_read' => (bool) ($row->can_read ?? false),
+            'can_create' => (bool) ($row->can_create ?? false),
+            'can_update' => (bool) ($row->can_update ?? false),
+            'can_delete' => (bool) ($row->can_delete ?? false),
+        ];
+    }
+
+    return response()->json(['permissions' => $permissions]);
+})->name('hakakses.permissions')->middleware(['auth', 'admin']);
+
+Route::post('/hak-akses/permissions', function (Request $request) {
+    $data = $request->validate([
+        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'menu' => ['required', 'string'],
+        'action' => ['required', 'in:read,create,update,delete'],
+        'value' => ['required', 'boolean'],
+    ]);
+
+    $menuGroups = hakAksesMenuGroups();
+    $menuKeys = collect($menuGroups)->flatten(1)->pluck('key')->values()->all();
+    if (!in_array($data['menu'], $menuKeys, true)) {
+        return response()->json(['message' => 'Menu tidak valid.'], 422);
+    }
+
+    $permission = RolePermission::firstOrNew([
+        'role' => $data['role'],
+        'menu' => $data['menu'],
+    ]);
+
+    $field = 'can_' . $data['action'];
+    $permission->{$field} = (bool) $data['value'];
+    $permission->save();
+
+    return response()->json(['ok' => true]);
+})->name('hakakses.permissions.save')->middleware(['auth', 'admin']);
+
+Route::post('/hak-akses/permissions/bulk', function (Request $request) {
+    $data = $request->validate([
+        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'value' => ['required', 'boolean'],
+    ]);
+
+    $menuGroups = hakAksesMenuGroups();
+    foreach ($menuGroups as $menus) {
+        foreach ($menus as $menu) {
+            $actions = $menu['actions'] ?? [];
+            RolePermission::updateOrCreate(
+                ['role' => $data['role'], 'menu' => $menu['key']],
+                [
+                    'can_read' => in_array('read', $actions, true) ? (bool) $data['value'] : false,
+                    'can_create' => in_array('create', $actions, true) ? (bool) $data['value'] : false,
+                    'can_update' => in_array('update', $actions, true) ? (bool) $data['value'] : false,
+                    'can_delete' => in_array('delete', $actions, true) ? (bool) $data['value'] : false,
+                ]
+            );
+        }
+    }
+
+    return response()->json(['ok' => true]);
+})->name('hakakses.permissions.bulk')->middleware(['auth', 'admin']);
+
+Route::post('/hak-akses/permissions/save', function (Request $request) {
+    $data = $request->validate([
+        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'permissions' => ['required', 'array'],
+    ]);
+
+    $menuGroups = hakAksesMenuGroups();
+    foreach ($menuGroups as $menus) {
+        foreach ($menus as $menu) {
+            $payload = $data['permissions'][$menu['key']] ?? [];
+            $actions = $menu['actions'] ?? [];
+
+            RolePermission::updateOrCreate(
+                ['role' => $data['role'], 'menu' => $menu['key']],
+                [
+                    'can_read' => in_array('read', $actions, true) ? (bool) ($payload['read'] ?? false) : false,
+                    'can_create' => in_array('create', $actions, true) ? (bool) ($payload['create'] ?? false) : false,
+                    'can_update' => in_array('update', $actions, true) ? (bool) ($payload['update'] ?? false) : false,
+                    'can_delete' => in_array('delete', $actions, true) ? (bool) ($payload['delete'] ?? false) : false,
+                ]
+            );
+        }
+    }
+
+    return response()->json(['ok' => true]);
+})->name('hakakses.permissions.saveall')->middleware(['auth', 'admin']);
 
 // ---------------- CCTV ----------------
 Route::get('/cctv', function (Request $request) {
@@ -533,12 +703,12 @@ Route::get('/cctv', function (Request $request) {
         ->withQueryString();
 
     return view('cctv.cctv', compact('cctvs', 'status', 'q'));
-})->name('cctv.index')->middleware('auth');
+})->name('cctv.index')->middleware(['auth', 'permission:cctv,read']);
 
 Route::get('/cctv/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['room_id', 'name']);
     return view('cctv.addcctv', ['rooms' => $rooms]);
-})->name('cctv.create')->middleware('auth');
+})->name('cctv.create')->middleware(['auth', 'permission:cctv,create']);
 
 Route::post('/cctv/tambah', function (Request $request) {
     $data = $request->validate([
@@ -556,7 +726,7 @@ Route::post('/cctv/tambah', function (Request $request) {
     ]);
 
     return redirect()->route('cctv.index')->with('success', 'CCTV berhasil ditambahkan.');
-})->name('cctv.store')->middleware('auth');
+})->name('cctv.store')->middleware(['auth', 'permission:cctv,create']);
 
 Route::get('/cctv/{encoded}/edit', function (string $encoded) {
     try {
@@ -571,7 +741,7 @@ Route::get('/cctv/{encoded}/edit', function (string $encoded) {
         'rooms' => $rooms,
         'encoded' => $encoded,
     ]);
-})->name('cctv.edit')->middleware('auth');
+})->name('cctv.edit')->middleware(['auth', 'permission:cctv,update']);
 
 Route::put('/cctv/{encoded}', function (Request $request, string $encoded) {
     try {
@@ -595,7 +765,7 @@ Route::put('/cctv/{encoded}', function (Request $request, string $encoded) {
     ]);
 
     return redirect()->route('cctv.index')->with('success', 'CCTV berhasil diperbarui.');
-})->name('cctv.update')->middleware('auth');
+})->name('cctv.update')->middleware(['auth', 'permission:cctv,update']);
 
 Route::delete('/cctv/{encoded}', function (string $encoded) {
     try {
@@ -606,7 +776,7 @@ Route::delete('/cctv/{encoded}', function (string $encoded) {
     $cctv = Cctv::findOrFail($id);
     $cctv->delete();
     return redirect()->route('cctv.index')->with('success', 'CCTV berhasil dihapus.');
-})->name('cctv.destroy')->middleware('auth');
+})->name('cctv.destroy')->middleware(['auth', 'permission:cctv,delete']);
 
 // ---------------- ISP ----------------
 Route::get('/isp', function () {
@@ -616,16 +786,17 @@ Route::get('/isp', function () {
         ->orderBy('isps.nama_isp')
         ->get();
     return view('isp.isp', compact('isps'));
-})->name('isp.index')->middleware('auth');
+})->name('isp.index')->middleware(['auth', 'permission:isp,read']);
 
 Route::get('/isp/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
     return view('isp.addisp', compact('rooms'));
-})->name('isp.create')->middleware('auth');
+})->name('isp.create')->middleware(['auth', 'permission:isp,create']);
 
 Route::post('/isp/tambah', function (Request $request) {
     $data = $request->validate([
         'nama_isp' => ['required', 'string', 'max:255'],
+        'no_pelanggan' => ['required', 'string', 'max:100'],
         'jenis_koneksi' => ['required', Rule::in(['fiber','radio'])],
         'bandwidth' => ['required', 'string', 'max:50', 'regex:/^\d+\s?(Mbps|Gbps)$/i'],
         'ip_address' => ['required', 'ip'],
@@ -645,7 +816,7 @@ Route::post('/isp/tambah', function (Request $request) {
     ]));
 
     return redirect()->route('isp.index')->with('success', 'Data ISP berhasil ditambahkan.');
-})->name('isp.store')->middleware('auth');
+})->name('isp.store')->middleware(['auth', 'permission:isp,create']);
 
 Route::get('/isp/{encoded}/edit', function (string $encoded) {
     try {
@@ -659,7 +830,7 @@ Route::get('/isp/{encoded}/edit', function (string $encoded) {
     }
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
     return view('isp.editisp', ['isp' => $isp, 'encoded' => $encoded, 'rooms' => $rooms]);
-})->name('isp.edit')->middleware('auth');
+})->name('isp.edit')->middleware(['auth', 'permission:isp,update']);
 
 Route::put('/isp/{encoded}', function (Request $request, string $encoded) {
     try {
@@ -669,6 +840,7 @@ Route::put('/isp/{encoded}', function (Request $request, string $encoded) {
     }
     $data = $request->validate([
         'nama_isp' => ['required', 'string', 'max:255'],
+        'no_pelanggan' => ['required', 'string', 'max:100'],
         'jenis_koneksi' => ['required', Rule::in(['fiber','radio'])],
         'bandwidth' => ['required', 'string', 'max:50', 'regex:/^\d+\s?(Mbps|Gbps)$/i'],
         'ip_address' => ['required', 'ip'],
@@ -687,7 +859,7 @@ Route::put('/isp/{encoded}', function (Request $request, string $encoded) {
     ]));
 
     return redirect()->route('isp.index')->with('success', 'Data ISP berhasil diperbarui.');
-})->name('isp.update')->middleware('auth');
+})->name('isp.update')->middleware(['auth', 'permission:isp,update']);
 
 Route::delete('/isp/{encoded}', function (string $encoded) {
     try {
@@ -697,12 +869,13 @@ Route::delete('/isp/{encoded}', function (string $encoded) {
     }
     DB::table('isps')->where('id', $id)->delete();
     return redirect()->route('isp.index')->with('success', 'Data ISP berhasil dihapus.');
-})->name('isp.destroy')->middleware('auth');
+})->name('isp.destroy')->middleware(['auth', 'permission:isp,delete']);
 
 // ---------------- Helpdesk ----------------
 Route::get('/helpdesk', function () {
     $tickets = DB::table('helpdesk_tickets')
         ->leftJoin('rooms', 'rooms.id', '=', 'helpdesk_tickets.room_id')
+        ->leftJoin('devices', 'devices.id', '=', 'helpdesk_tickets.device_id')
         ->leftJoin('users', 'users.id', '=', 'helpdesk_tickets.petugas_id')
         ->select(
             'helpdesk_tickets.id',
@@ -710,12 +883,12 @@ Route::get('/helpdesk', function () {
             'helpdesk_tickets.tanggal',
             'helpdesk_tickets.pelapor',
             'helpdesk_tickets.kategori',
-            'helpdesk_tickets.sub_kategori',
             'helpdesk_tickets.kendala',
             'helpdesk_tickets.prioritas',
             'helpdesk_tickets.status',
             'helpdesk_tickets.keterangan',
             'rooms.name as room_name',
+            'devices.device_name as device_name',
             'users.name as petugas_name'
         )
         ->orderByDesc('helpdesk_tickets.tanggal')
@@ -725,11 +898,11 @@ Route::get('/helpdesk', function () {
     return view('helpdesk.helpdesk', [
         'tickets' => $tickets,
     ]);
-})->name('helpdesk.index')->middleware('auth');
+})->name('helpdesk.index')->middleware(['auth', 'permission:helpdesk,read']);
 
 Route::get('/helpdesk/tambah-ticket', function () {
     $rooms = \App\Models\Room::query()
-        ->select('id', 'name')
+        ->select('id', 'name', 'room_id')
         ->orderBy('name')
         ->get();
     $petugas = \App\Models\User::query()
@@ -742,7 +915,23 @@ Route::get('/helpdesk/tambah-ticket', function () {
         'rooms' => $rooms,
         'petugas' => $petugas,
     ]);
-})->name('helpdesk.create')->middleware('auth');
+})->name('helpdesk.create')->middleware(['auth', 'permission:helpdesk,create']);
+
+Route::get('/helpdesk/devices', function (Request $request) {
+    $data = $request->validate([
+        'room_id' => ['required', 'integer', 'exists:rooms,id'],
+    ]);
+
+    $room = Room::find($data['room_id']);
+    $roomCode = $room?->room_id;
+
+    $devices = Device::query()
+        ->when($roomCode, fn($q) => $q->where('room_id', $roomCode))
+        ->orderBy('device_name')
+        ->get(['id', 'device_name', 'device_type']);
+
+    return response()->json($devices);
+})->middleware(['auth', 'permission:helpdesk,create']);
 
 Route::post('/helpdesk/tambah-ticket', function (Request $request) {
     $validated = $request->validate([
@@ -750,9 +939,11 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
         'pelapor' => ['required', 'string', 'max:255'],
         'room_id' => ['required', 'integer', 'exists:rooms,id'],
         'kategori' => ['required', Rule::in(['hardware', 'software'])],
-        'jenis_hardware' => [
+        'device_id' => [
             Rule::requiredIf(fn () => $request->input('kategori') === 'hardware'),
-            Rule::in(['komputer', 'jaringan', 'printer', 'telepon']),
+            'nullable',
+            'integer',
+            'exists:devices,id',
         ],
         'kendala' => ['required', 'string'],
         'prioritas' => ['required', Rule::in(['rendah', 'sedang', 'tinggi'])],
@@ -764,12 +955,6 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
         'hardware' => '1',
         'software' => '2',
     ];
-    $subKategoriMap = [
-        'komputer' => '1',
-        'jaringan' => '2',
-        'printer' => '3',
-        'telepon' => '4',
-    ];
     $prioritasMap = [
         'rendah' => '1',
         'sedang' => '2',
@@ -778,23 +963,33 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
 
     $tanggal = \Carbon\Carbon::parse($validated['tanggal'])->format('dmY');
     $kategoriCode = $kategoriMap[$validated['kategori']];
-    $subKategoriValue = $validated['kategori'] === 'hardware' ? ($validated['jenis_hardware'] ?? null) : null;
-    $subKategoriCode = $subKategoriValue ? $subKategoriMap[$subKategoriValue] : '0';
     $prioritasCode = $prioritasMap[$validated['prioritas']];
 
     $room = Room::find($validated['room_id']);
     $roomCode = $room?->room_id ?: (string) $validated['room_id'];
     $roomCode = str_replace('-', '', $roomCode);
 
-    $noTicket = $roomCode . $tanggal . $kategoriCode . $subKategoriCode . $prioritasCode;
+    $deviceId = $validated['device_id'] ?? null;
+    if ($validated['kategori'] === 'hardware') {
+        $device = Device::find($deviceId);
+        $deviceRoom = $device?->room_id;
+        if ($deviceRoom && $room && $deviceRoom !== $room->room_id) {
+            return back()->withErrors(['device_id' => 'Perangkat tidak sesuai dengan ruangan yang dipilih.'])->withInput();
+        }
+    } else {
+        $deviceId = null;
+    }
+
+    $deviceCode = $deviceId ? (string) $deviceId : '0';
+    $noTicket = $roomCode . $tanggal . $kategoriCode . $deviceCode . $prioritasCode;
 
     $ticket = HelpdeskTicket::create([
         'no_ticket' => $noTicket,
         'tanggal' => $validated['tanggal'],
         'pelapor' => $validated['pelapor'],
         'room_id' => $validated['room_id'],
+        'device_id' => $deviceId,
         'kategori' => $validated['kategori'],
-        'sub_kategori' => $subKategoriValue,
         'kendala' => $validated['kendala'],
         'prioritas' => $validated['prioritas'],
         'petugas_id' => $validated['petugas_id'] ?? null,
@@ -816,8 +1011,9 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
                 $phone = '62' . $phone;
             }
 
+            $token = ticket_token_encode($ticket->no_ticket);
             $message = "Anda menerima tiket baru. Silakan segera melakukan pengecekan pada detail tiket melalui tautan berikut:\n"
-                . "https://rsudzm.simti.xyz/helpdesk/detail-ticket/{$ticket->no_ticket}\n"
+                . "https://rsudzm.simti.xyz/helpdesk/detail-ticket/{$token}\n"
                 . "Mohon untuk segera ditindaklanjuti.";
 
             $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -856,20 +1052,26 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
     }
 
     return redirect('/helpdesk')->with('success', 'Ticket berhasil dibuat.');
-})->name('helpdesk.store')->middleware('auth');
+})->name('helpdesk.store')->middleware(['auth', 'permission:helpdesk,create']);
 
 Route::delete('/helpdesk/{ticket}', function (HelpdeskTicket $ticket) {
     $ticket->delete();
     return redirect('/helpdesk')->with('success', 'Ticket berhasil dihapus.');
-})->name('helpdesk.destroy')->middleware('auth');
+})->name('helpdesk.destroy')->middleware(['auth', 'permission:helpdesk,delete']);
 
-Route::get('/helpdesk/detail-ticket/{no_ticket}', function (string $noTicket) {
+Route::get('/detail-ticket/{no_ticket}', function (string $noTicket) {
+    $user = auth()->user();
+    if ($user && !in_array($user->role, ['admin', 'petugas_helpdesk'], true)) {
+        abort(403);
+    }
     $ticket = DB::table('helpdesk_tickets')
         ->leftJoin('rooms', 'rooms.id', '=', 'helpdesk_tickets.room_id')
+        ->leftJoin('devices', 'devices.id', '=', 'helpdesk_tickets.device_id')
         ->leftJoin('users', 'users.id', '=', 'helpdesk_tickets.petugas_id')
         ->select(
             'helpdesk_tickets.*',
             'rooms.name as room_name',
+            'devices.device_name as device_name',
             'users.name as petugas_name'
         )
         ->where('helpdesk_tickets.no_ticket', $noTicket)
@@ -882,12 +1084,70 @@ Route::get('/helpdesk/detail-ticket/{no_ticket}', function (string $noTicket) {
     return view('helpdesk.detailticket', [
         'ticket' => $ticket,
     ]);
-})->name('helpdesk.show');
+})->name('helpdesk.show.internal')->middleware(['auth', 'permission:helpdesk,read']);
+
+Route::get('/helpdesk/detail-ticket/{token}', function (string $token) {
+    if (auth()->check() && !in_array(auth()->user()->role, ['petugas_it', 'admin'], true)) {
+        abort(403);
+    }
+
+    try {
+        $noTicket = ticket_token_decode($token);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+
+    $ticket = DB::table('helpdesk_tickets')
+        ->leftJoin('rooms', 'rooms.id', '=', 'helpdesk_tickets.room_id')
+        ->leftJoin('devices', 'devices.id', '=', 'helpdesk_tickets.device_id')
+        ->leftJoin('users', 'users.id', '=', 'helpdesk_tickets.petugas_id')
+        ->select(
+            'helpdesk_tickets.*',
+            'rooms.name as room_name',
+            'devices.device_name as device_name',
+            'users.name as petugas_name'
+        )
+        ->where('helpdesk_tickets.no_ticket', $noTicket)
+        ->first();
+
+    if (!$ticket) {
+        abort(404);
+    }
+
+    return view('helpdesk.detailticket', [
+        'ticket' => $ticket,
+        'token' => $token,
+    ]);
+})->name('helpdesk.show.public');
+
+Route::post('/helpdesk/detail-ticket/{token}/progress', function (string $token) {
+    if (auth()->check()) {
+        abort(403);
+    }
+
+    try {
+        $noTicket = ticket_token_decode($token);
+    } catch (DecryptException $e) {
+        abort(404);
+    }
+
+    $ticket = HelpdeskTicket::where('no_ticket', $noTicket)->first();
+    if (!$ticket) {
+        abort(404);
+    }
+
+    if ($ticket->status === 'open') {
+        $ticket->status = 'in_progress';
+        $ticket->save();
+    }
+
+    return redirect()->route('helpdesk.show.public', $token)->with('success', 'Tiket diproses.');
+})->name('helpdesk.progress.guest');
 
 // ---------------- Laporan ----------------
 Route::get('/laporan', function () {
     return view('laporan.laporan');
-})->name('laporan.index')->middleware('auth');
+})->name('laporan.index')->middleware(['auth', 'permission:laporan,read']);
 
 // ---------------- WA Gateway ----------------
 Route::get('/whatsapp-gateway', function () {
@@ -1008,11 +1268,11 @@ Route::get('/ip-address', function (Request $request) {
         ->withQueryString();
 
     return view('ipaddress.ipaddr', compact('ipAddrs', 'status', 'q'));
-})->name('ipaddr.index')->middleware('auth');
+})->name('ipaddr.index')->middleware(['auth', 'permission:ip_address,read']);
 
 Route::get('/ip-address/tambah', function () {
     return view('ipaddress.addipaddress');
-})->name('ipaddr.create')->middleware('auth');
+})->name('ipaddr.create')->middleware(['auth', 'permission:ip_address,create']);
 
 Route::post('/ip-address/tambah', function (Request $request) {
     $data = $request->validate([
@@ -1032,7 +1292,7 @@ Route::post('/ip-address/tambah', function (Request $request) {
     IpAddr::create($data);
 
     return redirect()->route('ipaddr.index')->with('success', 'IP Address berhasil ditambahkan.');
-})->name('ipaddr.store')->middleware('auth');
+})->name('ipaddr.store')->middleware(['auth', 'permission:ip_address,create']);
 
 Route::delete('/ip-address/{encoded}', function (string $encoded) {
     try {
@@ -1043,7 +1303,7 @@ Route::delete('/ip-address/{encoded}', function (string $encoded) {
     $ip = IpAddr::findOrFail($id);
     $ip->delete();
     return redirect()->route('ipaddr.index')->with('success', 'IP Address berhasil dihapus.');
-})->name('ipaddr.destroy')->middleware('auth');
+})->name('ipaddr.destroy')->middleware(['auth', 'permission:ip_address,delete']);
 
 Route::get('/ip-address/{encoded}/edit', function (string $encoded) {
     try {
@@ -1053,7 +1313,7 @@ Route::get('/ip-address/{encoded}/edit', function (string $encoded) {
     }
     $ip = IpAddr::findOrFail($id);
     return view('ipaddress.editipaddress', compact('ip'));
-})->name('ipaddr.edit')->middleware('auth');
+})->name('ipaddr.edit')->middleware(['auth', 'permission:ip_address,update']);
 
 Route::put('/ip-address/{encoded}', function (Request $request, string $encoded) {
     try {
@@ -1079,7 +1339,7 @@ Route::put('/ip-address/{encoded}', function (Request $request, string $encoded)
     $ip->update($data);
 
     return redirect()->route('ipaddr.index')->with('success', 'IP Address berhasil diperbarui.');
-})->name('ipaddr.update')->middleware('auth');
+})->name('ipaddr.update')->middleware(['auth', 'permission:ip_address,update']);
 
 // ---------------- Devices ----------------
 Route::get('/perangkat', function (Request $request) {
@@ -1142,7 +1402,7 @@ Route::get('/perangkat', function (Request $request) {
         'q' => $q,
         'deviceTypes' => $deviceTypes,
     ]);
-})->name('device.index')->middleware('auth');
+})->name('device.index')->middleware(['auth', 'permission:perangkat,read']);
 
 Route::get('/perangkat/tambah-perangkat', function () {
     $rooms = Room::orderBy('room_id')->get(['room_id', 'name']);
@@ -1157,7 +1417,7 @@ Route::get('/perangkat/tambah-perangkat', function () {
         'Telepon',
     ];
     return view('devices.adddevice', compact('rooms', 'deviceTypes'));
-})->name('device.create')->middleware('auth');
+})->name('device.create')->middleware(['auth', 'permission:perangkat,create']);
 
 Route::post('/perangkat/tambah-perangkat', function (Request $request) {
     $deviceTypes = ['CPU', 'Monitor', 'PC AIO', 'Laptop', 'Router', 'Hub', 'Printer', 'Telepon'];
@@ -1176,7 +1436,7 @@ Route::post('/perangkat/tambah-perangkat', function (Request $request) {
     Device::create($data);
 
     return redirect()->route('device.index')->with('success', 'Perangkat berhasil ditambahkan.');
-})->name('device.store')->middleware('auth');
+})->name('device.store')->middleware(['auth', 'permission:perangkat,create']);
 
 Route::delete('/perangkat/{device}', function (Device $device) {
     $spec = DeviceSpec::where('device_id', $device->id)->first();
@@ -1192,7 +1452,7 @@ Route::delete('/perangkat/{device}', function (Device $device) {
     DeviceSpec::where('device_id', $device->id)->delete();
     $device->delete();
     return redirect()->route('device.index')->with('success', 'Perangkat berhasil dihapus.');
-})->name('device.destroy')->middleware('auth');
+})->name('device.destroy')->middleware(['auth', 'permission:perangkat,delete']);
 
 Route::get('/perangkat/{encoded}/edit-perangkat', function (string $encoded) {
     try {
@@ -1206,7 +1466,7 @@ Route::get('/perangkat/{encoded}/edit-perangkat', function (string $encoded) {
     $device = Device::findOrFail($deviceId);
     $rooms = Room::orderBy('room_id')->get(['room_id','name']);
     return view('devices.editdevice', compact('device','rooms','deviceTypes','encoded'));
-})->name('device.edit')->middleware('auth');
+})->name('device.edit')->middleware(['auth', 'permission:perangkat,update']);
 
 Route::put('/perangkat/{encoded}/edit-perangkat', function (Request $request, string $encoded) {
     try {
@@ -1228,7 +1488,7 @@ Route::put('/perangkat/{encoded}/edit-perangkat', function (Request $request, st
     $device = Device::findOrFail($deviceId);
     $device->update($data);
     return redirect()->route('device.index')->with('success','Perangkat berhasil diperbarui.');
-})->name('device.update')->middleware('auth');
+})->name('device.update')->middleware(['auth', 'permission:perangkat,update']);
 
 Route::get('/perangkat/spesifikasi-perangkat', function () {
     $usedIds = DeviceSpec::pluck('device_id')->all();
@@ -1239,7 +1499,7 @@ Route::get('/perangkat/spesifikasi-perangkat', function () {
     $ramOptions = ['4 GB','8 GB','16 GB','32 GB','64 GB'];
     $capacityOptions = ['128 GB','256 GB','512 GB','1 TB','2 TB'];
     return view('devices.specdevice', compact('devices','ramOptions','capacityOptions'));
-})->name('device.spec.form')->middleware('auth');
+})->name('device.spec.form')->middleware(['auth', 'permission:spesifikasi_perangkat,create']);
 
 Route::get('/perangkat/spesifikasi-perangkat/{device}', function (Device $device) {
     $usedIds = DeviceSpec::pluck('device_id')->all();
@@ -1258,7 +1518,7 @@ Route::get('/perangkat/spesifikasi-perangkat/{device}', function (Device $device
         'capacityOptions' => $capacityOptions,
         'editDevice' => $device,
     ]);
-})->name('device.spec.edit')->middleware('auth');
+})->name('device.spec.edit')->middleware(['auth', 'permission:spesifikasi_perangkat,update']);
 
 Route::post('/perangkat/spesifikasi-perangkat', function (Request $request) {
     $ramOptions = ['4 GB','8 GB','16 GB','32 GB','64 GB'];
@@ -1306,7 +1566,7 @@ Route::post('/perangkat/spesifikasi-perangkat', function (Request $request) {
     }
 
     return redirect()->route('device.index')->with('success','Spesifikasi perangkat berhasil disimpan.');
-})->name('device.spec.save')->middleware('auth');
+})->name('device.spec.save')->middleware(['auth', 'permission:spesifikasi_perangkat,create']);
 Route::post('/perangkat/{device}/spec', function (Request $request, Device $device) {
     $ramOptions = ['4 GB','8 GB','16 GB','32 GB','64 GB'];
     $capacityOptions = ['128 GB','256 GB','512 GB','1 TB','2 TB'];
@@ -1359,7 +1619,7 @@ Route::post('/perangkat/{device}/spec', function (Request $request, Device $devi
         return response()->json(['message' => 'Spesifikasi tersimpan.']);
     }
     return redirect()->back()->with('success', 'Spesifikasi tersimpan.');
-})->name('device.spec.store')->middleware('auth');
+})->name('device.spec.store')->middleware(['auth', 'permission:spesifikasi_perangkat,update']);
 
 Route::delete('/perangkat/spesifikasi-perangkat/{device}', function (Device $device) {
     $spec = DeviceSpec::where('device_id', $device->id)->first();
@@ -1378,7 +1638,7 @@ Route::delete('/perangkat/spesifikasi-perangkat/{device}', function (Device $dev
     }
     DeviceSpec::where('device_id', $device->id)->delete();
     return redirect()->route('device.index')->with('success', 'Spesifikasi perangkat berhasil dihapus.');
-})->name('device.spec.delete')->middleware('auth');
+})->name('device.spec.delete')->middleware(['auth', 'permission:spesifikasi_perangkat,delete']);
 
 // ---------------- Lainnya ----------------
 Route::get('/profile', function () {
@@ -1414,9 +1674,11 @@ Route::post('/forget-password', function (Request $request) {
         return back()->withInput()->with('error', 'No HP tidak ditemukan.');
     }
 
-    $token = Crypt::encryptString((string) $user->id);
-    $safeToken = urlencode($token);
-    $link = url('/change-password/' . $safeToken);
+    $token = Str::random(64);
+    $user->reset_token = $token;
+    $user->reset_token_expires = now()->addHours(1);
+    $user->save();
+    $link = url('/change-password/' . $token);
     $message = "Ganti password Anda melalui link berikut:\n{$link}\n\nAbaikan pesan ini jika Anda tidak meminta perubahan password.";
 
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -1438,13 +1700,9 @@ Route::post('/forget-password', function (Request $request) {
 })->name('auth.forget.send');
 
 Route::get('/change-password/{token}', function (string $token) {
-    try {
-        $token = urldecode($token);
-        $id = Crypt::decryptString($token);
-    } catch (\Throwable $e) {
-        abort(404);
-    }
-    $user = User::find($id);
+    $user = User::where('reset_token', $token)
+        ->where('reset_token_expires', '>=', now())
+        ->first();
     if (!$user) {
         abort(404);
     }
@@ -1452,13 +1710,9 @@ Route::get('/change-password/{token}', function (string $token) {
 })->name('auth.change');
 
 Route::post('/change-password/{token}', function (Request $request, string $token) {
-    try {
-        $token = urldecode($token);
-        $id = Crypt::decryptString($token);
-    } catch (\Throwable $e) {
-        abort(404);
-    }
-    $user = User::find($id);
+    $user = User::where('reset_token', $token)
+        ->where('reset_token_expires', '>=', now())
+        ->first();
     if (!$user) {
         abort(404);
     }
@@ -1469,10 +1723,17 @@ Route::post('/change-password/{token}', function (Request $request, string $toke
         'password.confirmed' => 'Konfirmasi password tidak sama.',
     ]);
 
+    if (Hash::check($data['password'], $user->password)) {
+        return back()->withErrors(['password' => 'Password baru tidak boleh sama dengan password lama.']);
+    }
+
     $user->password = Hash::make($data['password']);
+    $user->reset_token = null;
+    $user->reset_token_expires = null;
     $user->save();
 
-    return redirect('/auth/login')->with('success', 'Password berhasil diubah. Silakan login.');
+    return redirect('/auth/login')
+        ->with('success', 'Password berhasil diubah. Silakan login.');
 })->name('auth.change.save');
 
 Route::post('/auth/otp', function (Request $request) {

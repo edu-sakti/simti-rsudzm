@@ -25,9 +25,15 @@
 					<form method="POST" action="{{ route('isp.store') }}">
 						@csrf
 
-						<div class="mb-3">
-							<label class="form-label fw-semibold">Nama ISP</label>
-							<input type="text" name="nama_isp" class="form-control" value="{{ old('nama_isp') }}" required>
+						<div class="row g-3">
+							<div class="col-md-6">
+								<label class="form-label fw-semibold">Nama ISP</label>
+								<input type="text" name="nama_isp" class="form-control" value="{{ old('nama_isp') }}" required>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label fw-semibold">No Pelanggan</label>
+								<input type="text" name="no_pelanggan" class="form-control" value="{{ old('no_pelanggan') }}" required>
+							</div>
 						</div>
 
 						<div class="row g-3">

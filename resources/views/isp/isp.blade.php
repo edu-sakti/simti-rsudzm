@@ -10,10 +10,12 @@
 			<div class="card">  
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<h5 class="card-title mb-0">Data ISP</h5>
-					<a href="/isp/tambah" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-						<i data-feather="plus"></i>
-						<span>Tambah ISP</span>
-					</a>
+					@permission('isp', 'create')
+						<a href="/isp/tambah" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+							<i data-feather="plus"></i>
+							<span>Tambah ISP</span>
+						</a>
+					@endpermission
 				</div>
 				<div class="card-body">
 					<div class="table-responsive">
@@ -22,6 +24,7 @@
 								<tr>
 									<th style="width:60px">No</th>
 									<th>Nama ISP</th>
+									<th>No Pelanggan</th>
 									<th>Jenis Koneksi</th>
 									<th>Bandwidth</th>
 									<th>IP Address</th>
@@ -39,6 +42,7 @@
 									<tr>
 										<td>{{ $index + 1 }}</td>
 										<td>{{ $isp->nama_isp }}</td>
+										<td>{{ $isp->no_pelanggan ?? '-' }}</td>
 										<td>{{ $isp->jenis_koneksi }}</td>
 										<td>{{ $isp->bandwidth }}</td>
 										<td>{{ $isp->ip_address }}</td>
@@ -49,18 +53,22 @@
 										<td>{{ $isp->keterangan ?? '-' }}</td>
 										<td>
 											<div class="d-flex gap-2">
-												<a href="{{ route('isp.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-												<form method="POST" action="{{ route('isp.destroy', $encoded) }}" class="js-delete-isp">
-													@csrf
-													@method('DELETE')
-													<button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
-												</form>
+												@permission('isp', 'update')
+													<a href="{{ route('isp.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+												@endpermission
+												@permission('isp', 'delete')
+													<form method="POST" action="{{ route('isp.destroy', $encoded) }}" class="js-delete-isp">
+														@csrf
+														@method('DELETE')
+														<button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+													</form>
+												@endpermission
 											</div>
 										</td>
 									</tr>
 								@empty
 									<tr>
-										<td colspan="11" class="text-center text-muted">Belum ada data ISP.</td>
+										<td colspan="12" class="text-center text-muted">Belum ada data ISP.</td>
 									</tr>
 								@endforelse
 							</tbody>

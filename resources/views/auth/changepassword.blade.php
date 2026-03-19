@@ -12,11 +12,6 @@
 <div class="card mx-auto" style="max-width: 520px;">
     <div class="card-body">
         <div class="m-sm-3">
-            @if($errors->any())
-              <div class="alert alert-danger">
-                {{ $errors->first() }}
-              </div>
-            @endif
             <form method="POST" action="/change-password/{{ $token }}" novalidate>
                 @csrf
                 <div class="mb-3">
@@ -58,3 +53,27 @@
    <a href="/auth/login" class="text-primary">login</a>
 </div>
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const error = @json($errors->first());
+    const success = @json(session('success'));
+    if (error && typeof Swal !== 'undefined') {
+      Swal.fire({ icon: 'error', title: 'Gagal', text: error });
+    }
+    if (success && typeof Swal !== 'undefined') {
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: success,
+        timer: 1800,
+        showConfirmButton: false
+      }).then(() => {
+        window.location.href = '/auth/login';
+      });
+    }
+  });
+</script>
+@endpush

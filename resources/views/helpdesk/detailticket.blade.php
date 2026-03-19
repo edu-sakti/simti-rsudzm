@@ -38,8 +38,14 @@
             <div class="fw-semibold">{{ ucfirst($ticket->kategori) }}</div>
           </div>
           <div class="col-md-6">
-            <label class="form-label text-muted">Sub Kategori</label>
-            <div class="fw-semibold">{{ $ticket->sub_kategori ? ucfirst(str_replace('_',' ', $ticket->sub_kategori)) : '-' }}</div>
+            <label class="form-label text-muted">Perangkat</label>
+            <div class="fw-semibold">
+              @if($ticket->device_name)
+                {{ $ticket->device_name }} ({{ $ticket->device_id }})
+              @else
+                -
+              @endif
+            </div>
           </div>
           <div class="col-md-6">
             <label class="form-label text-muted">Prioritas</label>
@@ -52,15 +58,24 @@
           <div class="col-md-6">
             <label class="form-label text-muted">Status</label>
             @php
-              $statusMap = [
-                'open' => 'Terbuka',
-                'assigned' => 'Ditugaskan',
-                'in_progress' => 'Dalam Proses',
-                'resolved' => 'Terselesaikan',
-                'closed' => 'Ditutup',
-              ];
+              $statusKey = $ticket->status ?? 'open';
+              $statusLabel = 'Open';
+              $statusClass = 'bg-warning text-dark';
+
+              if (in_array($statusKey, ['assigned', 'in_progress', 'progress'], true)) {
+                $statusLabel = 'Progress';
+                $statusClass = 'bg-primary';
+              } elseif (in_array($statusKey, ['resolved', 'done'], true)) {
+                $statusLabel = 'Done';
+                $statusClass = 'bg-success';
+              } elseif ($statusKey === 'closed') {
+                $statusLabel = 'Closed';
+                $statusClass = 'bg-secondary';
+              }
             @endphp
-            <div class="fw-semibold">{{ $statusMap[$ticket->status] ?? $ticket->status }}</div>
+            <div class="fw-semibold">
+              <span class="badge {{ $statusClass }}">{{ $statusLabel }}</span>
+            </div>
           </div>
           <div class="col-12">
             <label class="form-label text-muted">Kendala</label>
@@ -70,6 +85,19 @@
             <label class="form-label text-muted">Keterangan</label>
             <div class="fw-semibold">{{ $ticket->keterangan ?? '-' }}</div>
           </div>
+          @guest
+            @if(($ticket->status ?? 'open') === 'open' && !empty($token))
+              <div class="col-12 d-flex justify-content-end">
+                <form action="{{ route('helpdesk.progress.guest', $token) }}" method="POST" class="m-0">
+                  @csrf
+                  <button type="submit" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+                    <i data-feather="play"></i>
+                    <span>Proses</span>
+                  </button>
+                </form>
+              </div>
+            @endif
+          @endguest
         </div>
       </div>
     </div>
@@ -81,4 +109,16 @@
 <script>
   if (typeof feather !== 'undefined') feather.replace();
 </script>
+@if(session('success'))
+<script>
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'success',
+      title: 'Berhasil',
+      text: @json(session('success')),
+      confirmButtonText: 'OK'
+    });
+  }
+</script>
+@endif
 @endpush

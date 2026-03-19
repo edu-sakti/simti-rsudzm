@@ -10,10 +10,12 @@
     <div class="card shadow-sm table-card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">Tabel Ruangan</h5>
-        <a href="{{ route('rooms.create') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-          <i data-feather="plus"></i>
-          <span>Tambah Ruangan</span>
-        </a>
+        @permission('ruangan', 'create')
+          <a href="{{ route('rooms.create') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+            <i data-feather="plus"></i>
+            <span>Tambah Ruangan</span>
+          </a>
+        @endpermission
       </div>
       <div class="card-body">
         <form method="GET" action="{{ route('rooms.index') }}" class="mb-3">
@@ -75,18 +77,22 @@
                   <td class="col-aksi">
                     @php($encoded = encrypt($room->room_id))
                     <div class="d-flex gap-2">
-                      <a href="{{ route('rooms.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">
-                        <i data-feather="edit-2"></i>
-                        Edit
-                      </a>
-                      <form method="POST" action="{{ route('rooms.destroy', $encoded) }}" class="js-delete-room">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                          <i data-feather="trash-2"></i>
-                          Hapus
-                        </button>
-                      </form>
+                      @permission('ruangan', 'update')
+                        <a href="{{ route('rooms.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">
+                          <i data-feather="edit-2"></i>
+                          Edit
+                        </a>
+                      @endpermission
+                      @permission('ruangan', 'delete')
+                        <form method="POST" action="{{ route('rooms.destroy', $encoded) }}" class="js-delete-room">
+                          @csrf
+                          @method('DELETE')
+                          <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i data-feather="trash-2"></i>
+                            Hapus
+                          </button>
+                        </form>
+                      @endpermission
                     </div>
                   </td>
                 </tr>
@@ -150,7 +156,6 @@
   })();
 </script>
 @endsection
-
 
 
 

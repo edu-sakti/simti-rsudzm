@@ -10,10 +10,12 @@
     <div class="card shadow-sm table-card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">Tabel Perangkat</h5>
-        <a href="{{ route('device.create') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-          <i data-feather="plus"></i>
-          <span>Tambah Perangkat</span>
-        </a>
+        @permission('perangkat', 'create')
+          <a href="{{ route('device.create') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+            <i data-feather="plus"></i>
+            <span>Tambah Perangkat</span>
+          </a>
+        @endpermission
       </div>
       <div class="card-body">
         <form method="GET" action="{{ route('device.index') }}" class="mb-3">
@@ -91,12 +93,16 @@
                               data-type="{{ $device->device_type }}">
                         Detail
                       </button>
-                      <a href="{{ route('device.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                      <form action="{{ route('device.destroy', $device->id) }}" method="POST" class="d-inline js-delete-device">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
-                      </form>
+                      @permission('perangkat', 'update')
+                        <a href="{{ route('device.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                      @endpermission
+                      @permission('perangkat', 'delete')
+                        <form action="{{ route('device.destroy', $device->id) }}" method="POST" class="d-inline js-delete-device">
+                          @csrf
+                          @method('DELETE')
+                          <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                        </form>
+                      @endpermission
                     </div>
                   </td>
                 </tr>
@@ -158,6 +164,10 @@
 
     let currentDeviceId = null;
 
+    const canCreateSpec = @json(\App\Support\Permission::can(auth()->user(), 'spesifikasi_perangkat', 'create'));
+    const canEditSpec = @json(\App\Support\Permission::can(auth()->user(), 'spesifikasi_perangkat', 'update'));
+    const canDeleteSpec = @json(\App\Support\Permission::can(auth()->user(), 'spesifikasi_perangkat', 'delete'));
+
     document.querySelectorAll('.btn-detail').forEach(btn => {
       btn.addEventListener('click', () => {
         const spec = btn.dataset.spec ? JSON.parse(btn.dataset.spec) : null;
@@ -186,10 +196,10 @@
             title: `Spesifikasi ${name}`,
             html,
             width: 600,
-            showCancelButton: true,
+            showCancelButton: !!canEditSpec,
             cancelButtonText: 'Edit',
             confirmButtonText: 'OK',
-            showDenyButton: true,
+            showDenyButton: !!canDeleteSpec,
             denyButtonText: 'Hapus',
             reverseButtons: false,
             didOpen: () => {
@@ -198,9 +208,9 @@
               const denyBtn = Swal.getDenyButton();
               const confirmBtn = Swal.getConfirmButton();
               actions.innerHTML = '';
-              actions.append(cancelBtn);  // Edit
+              if (cancelBtn) actions.append(cancelBtn);  // Edit
               actions.append(confirmBtn); // OK
-              actions.append(denyBtn);    // Hapus
+              if (denyBtn) actions.append(denyBtn);    // Hapus
             }
           }).then((res) => {
             if (res.dismiss === Swal.DismissReason.cancel) {
@@ -229,6 +239,15 @@
               text: 'Spesifikasi belum ditambahkan untuk perangkat ini.'
             });
           }
+          return;
+        }
+
+        if (!canCreateSpec) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses ditolak',
+            text: 'Anda tidak memiliki izin menambah spesifikasi perangkat.'
+          });
           return;
         }
 

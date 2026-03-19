@@ -49,6 +49,16 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    const success = @json(session('success'));
+    if (success && typeof Swal !== 'undefined') {
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: success,
+        timer: 1800,
+        showConfirmButton: false
+      });
+    }
     @if ($errors->any())
       const message = {!! json_encode($errors->first()) !!};
       Swal.fire({

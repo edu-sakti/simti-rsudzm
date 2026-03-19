@@ -10,10 +10,12 @@
     <div class="card shadow-sm table-card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">Tabel IP Address</h5>
-        <a href="{{ route('ipaddr.create') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-          <i data-feather="plus"></i>
-          <span>Tambah IP</span>
-        </a>
+        @permission('ip_address', 'create')
+          <a href="{{ route('ipaddr.create') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+            <i data-feather="plus"></i>
+            <span>Tambah IP</span>
+          </a>
+        @endpermission
       </div>
       <div class="card-body">
         <form method="GET" action="{{ route('ipaddr.index') }}" class="mb-3">
@@ -75,12 +77,16 @@
                   <td>
                     <div class="d-flex gap-2">
                       @php($encoded = encrypt($ip->id))
-                      <a href="{{ route('ipaddr.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                      <form action="{{ route('ipaddr.destroy', $encoded) }}" method="POST" class="d-inline js-delete-ip">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
-                      </form>
+                      @permission('ip_address', 'update')
+                        <a href="{{ route('ipaddr.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                      @endpermission
+                      @permission('ip_address', 'delete')
+                        <form action="{{ route('ipaddr.destroy', $encoded) }}" method="POST" class="d-inline js-delete-ip">
+                          @csrf
+                          @method('DELETE')
+                          <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                        </form>
+                      @endpermission
                     </div>
                   </td>
                 </tr>

@@ -129,31 +129,34 @@
 
             {{-- Jabatan Manajemen (khusus role manajemen) --}}
             <div class="col-md-6" id="manajemen-wrapper" style="display:none;">
-              <label for="manajemen_role" class="form-label">Jabatan Manajemen</label>
-              <select id="manajemen_role" name="manajemen_role" class="form-select">
+              <label for="jabatan_id" class="form-label">Jabatan Manajemen</label>
+              <select id="jabatan_id" name="jabatan_id" class="form-select">
                 <option value="">Pilih Jabatan</option>
-                <option value="Direktur">DIREKTUR</option>
-                <option value="Komite">KOMITE</option>
-                <option value="Dewan Pengawas">DEWAN PENGAWAS</option>
-                <option value="SPI">SPI</option>
-                <option value="Wadir Administrasi Umum">WADIR ADMINITRASI UMUM</option>
-                <option value="Kabag Keuangan dan Penyusun Program">KABAG KEUANGAN DAN PENYUSUN PROGRAM</option>
-                <option value="Kasubbag Keuangan">KASUBBAG KEUANGAN</option>
-                <option value="Kasubbag Perencanaan, Evaluasi dan Pelaporan">KASUBBAG PERENCANAAN, EVALUASI DAN PELAPORAN</option>
-                <option value="Kabag Umum dan Kepegawaian">KABAG UMUM DAN KEPEGAWAIAN</option>
-                <option value="Kasubbag Tata Usaha dan Kepegawaian">KASUBBAG TATA USAHA DAN KEPEGAWAIAN</option>
-                <option value="Kasubbag Hubungan Masyarakat dan Pemasaran">KASUBBAG HUBUNGAN MASYARAKAT DAN PEMASARAN</option>
-                <option value="Wadir Pelayanan">WADIR PELAYANAN</option>
-                <option value="Kabid Pelayanan Penunjang">KABID PELAYANAN PENUNJANG</option>
-                <option value="Kasie Kefarmasian dan Perbekalan Kesehatan">KASIE KEFARMASIAN DAN PERBEKALAN KESEHATAN</option>
-                <option value="Kasie Penunjang, Penelitian, Pengembangan dan Upaya Rujukan">KASIE  PENUJANG, PENELITIAN, PENGEMBANGAN DAN UPAYA RUJUKAN</option>
-                <option value="Kabid Pelayanan Keperawatan dan Kebidanan">KABID PELAYANAN KEPERAWATAN DAN KEBIDANAN</option>
-                <option value="Kasie Asuhan Keperawatan dan Kebidanan">KASIE ASUHAN KEPERAWATAN DAN KEBIDANAN</option>
-                <option value="Kasie Etika Profesi, Logistik Keperawatan dan Kebidanan">KASIE ETIKA PROFESI, LOGISTIK KEPERAWATAN DAN KEBIDANAN</option>
-                <option value="Kabid Pelayanan Medis dan Penunjang Medis">KABID PELAYANAN MEDIS DAN PENUNJANG MEDIS</option>
-                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Darurat, Intensif dan Bedah Sentral">KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT DARURAT, INTENSIF DAN BEDAH SENTRAL</option>
-                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Jalan dan Rawat Inap">KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT JALAN DAN RAWAT INAP</option>
+                <option value="Direktur" {{ old('jabatan_id') === 'Direktur' ? 'selected' : '' }}>DIREKTUR</option>
+                <option value="Komite" {{ old('jabatan_id') === 'Komite' ? 'selected' : '' }}>KOMITE</option>
+                <option value="Dewan Pengawas" {{ old('jabatan_id') === 'Dewan Pengawas' ? 'selected' : '' }}>DEWAN PENGAWAS</option>
+                <option value="SPI" {{ old('jabatan_id') === 'SPI' ? 'selected' : '' }}>SPI</option>
+                <option value="Wadir Administrasi Umum" {{ old('jabatan_id') === 'Wadir Administrasi Umum' ? 'selected' : '' }}>WADIR ADMINITRASI UMUM</option>
+                <option value="Kabag Keuangan dan Penyusun Program" {{ old('jabatan_id') === 'Kabag Keuangan dan Penyusun Program' ? 'selected' : '' }}>KABAG KEUANGAN DAN PENYUSUN PROGRAM</option>
+                <option value="Kasubbag Keuangan" {{ old('jabatan_id') === 'Kasubbag Keuangan' ? 'selected' : '' }}>KASUBBAG KEUANGAN</option>
+                <option value="Kasubbag Perencanaan, Evaluasi dan Pelaporan" {{ old('jabatan_id') === 'Kasubbag Perencanaan, Evaluasi dan Pelaporan' ? 'selected' : '' }}>KASUBBAG PERENCANAAN, EVALUASI DAN PELAPORAN</option>
+                <option value="Kabag Umum dan Kepegawaian" {{ old('jabatan_id') === 'Kabag Umum dan Kepegawaian' ? 'selected' : '' }}>KABAG UMUM DAN KEPEGAWAIAN</option>
+                <option value="Kasubbag Tata Usaha dan Kepegawaian" {{ old('jabatan_id') === 'Kasubbag Tata Usaha dan Kepegawaian' ? 'selected' : '' }}>KASUBBAG TATA USAHA DAN KEPEGAWAIAN</option>
+                <option value="Kasubbag Hubungan Masyarakat dan Pemasaran" {{ old('jabatan_id') === 'Kasubbag Hubungan Masyarakat dan Pemasaran' ? 'selected' : '' }}>KASUBBAG HUBUNGAN MASYARAKAT DAN PEMASARAN</option>
+                <option value="Wadir Pelayanan" {{ old('jabatan_id') === 'Wadir Pelayanan' ? 'selected' : '' }}>WADIR PELAYANAN</option>
+                <option value="Kabid Pelayanan Penunjang" {{ old('jabatan_id') === 'Kabid Pelayanan Penunjang' ? 'selected' : '' }}>KABID PELAYANAN PENUNJANG</option>
+                <option value="Kasie Kefarmasian dan Perbekalan Kesehatan" {{ old('jabatan_id') === 'Kasie Kefarmasian dan Perbekalan Kesehatan' ? 'selected' : '' }}>KASIE KEFARMASIAN DAN PERBEKALAN KESEHATAN</option>
+                <option value="Kasie Penunjang, Penelitian, Pengembangan dan Upaya Rujukan" {{ old('jabatan_id') === 'Kasie Penunjang, Penelitian, Pengembangan dan Upaya Rujukan' ? 'selected' : '' }}>KASIE  PENUJANG, PENELITIAN, PENGEMBANGAN DAN UPAYA RUJUKAN</option>
+                <option value="Kabid Pelayanan Keperawatan dan Kebidanan" {{ old('jabatan_id') === 'Kabid Pelayanan Keperawatan dan Kebidanan' ? 'selected' : '' }}>KABID PELAYANAN KEPERAWATAN DAN KEBIDANAN</option>
+                <option value="Kasie Asuhan Keperawatan dan Kebidanan" {{ old('jabatan_id') === 'Kasie Asuhan Keperawatan dan Kebidanan' ? 'selected' : '' }}>KASIE ASUHAN KEPERAWATAN DAN KEBIDANAN</option>
+                <option value="Kasie Etika Profesi, Logistik Keperawatan dan Kebidanan" {{ old('jabatan_id') === 'Kasie Etika Profesi, Logistik Keperawatan dan Kebidanan' ? 'selected' : '' }}>KASIE ETIKA PROFESI, LOGISTIK KEPERAWATAN DAN KEBIDANAN</option>
+                <option value="Kabid Pelayanan Medis dan Penunjang Medis" {{ old('jabatan_id') === 'Kabid Pelayanan Medis dan Penunjang Medis' ? 'selected' : '' }}>KABID PELAYANAN MEDIS DAN PENUNJANG MEDIS</option>
+                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Darurat, Intensif dan Bedah Sentral" {{ old('jabatan_id') === 'Kasie Pelayanan Medis dan Penunjang Medis Rawat Darurat, Intensif dan Bedah Sentral' ? 'selected' : '' }}>KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT DARURAT, INTENSIF DAN BEDAH SENTRAL</option>
+                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Jalan dan Rawat Inap" {{ old('jabatan_id') === 'Kasie Pelayanan Medis dan Penunjang Medis Rawat Jalan dan Rawat Inap' ? 'selected' : '' }}>KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT JALAN DAN RAWAT INAP</option>
               </select>
+              @error('jabatan_id')
+                <div class="text-danger small">{{ $message }}</div>
+              @enderror
             </div>
 
             {{-- Tombol Aksi --}}

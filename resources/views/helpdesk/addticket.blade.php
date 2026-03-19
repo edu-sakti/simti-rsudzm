@@ -27,30 +27,27 @@
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Ruangan</label>
-							<select name="room_id" class="form-select">
+							<select name="room_id" id="roomSelect" class="form-select">
 								<option value="">Pilih Ruangan</option>
 								@foreach(($rooms ?? []) as $room)
-									<option value="{{ $room->id }}">{{ $room->name }}</option>
+									<option value="{{ $room->id }}" {{ old('room_id') == $room->id ? 'selected' : '' }}>{{ $room->name }}</option>
 								@endforeach
 							</select>
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Kategori</label>
-							<select name="kategori" id="kategoriSelect" class="form-select" onchange="toggleKategoriHardware(this.value)">
+							<select name="kategori" id="kategoriSelect" class="form-select">
 								<option value="">Pilih Kategori</option>
 								<option value="hardware">Hardware</option>
 								<option value="software">Software</option>
 							</select>
 						</div>
-						<div class="col-md-6 d-none" id="hardwareWrap">
-							<label class="form-label">Jenis Hardware</label>
-							<select name="jenis_hardware" id="hardwareSelect" class="form-select">
-								<option value="">Pilih Jenis</option>
-								<option value="komputer">Komputer</option>
-								<option value="jaringan">Jaringan</option>
-								<option value="printer">Printer</option>
-								<option value="telepon">Telepon</option>
+						<div class="col-md-6">
+							<label class="form-label">Perangkat</label>
+							<select name="device_id" id="deviceSelect" class="form-select" data-selected="{{ old('device_id') ?? '' }}" disabled>
+								<option value="">Pilih Perangkat</option>
 							</select>
+							<small class="text-muted d-block mt-1" id="deviceHelp">Pilih kategori Hardware dan ruangan terlebih dahulu.</small>
 						</div>
 						<div class="col-md-6">
 							<label class="form-label">Kendala</label>
@@ -82,7 +79,7 @@
 						<div class="col-12 text-end mt-3">
 							<button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
 								<i data-feather="save"></i>
-								<span>Simpan Ticket</span>
+								<span>Buat Ticket</span>
 							</button>
 						</div>
 					</form>
@@ -93,6 +90,9 @@
 
 	<script>
 		const form = document.getElementById('helpdeskForm');
+		const roomSelect = document.getElementById('roomSelect');
+		const deviceSelect = document.getElementById('deviceSelect');
+		const kategoriSelect = document.getElementById('kategoriSelect');
 
 		if (form) {
 			form.addEventListener('submit', (event) => {
@@ -111,15 +111,14 @@
 				});
 
 				const kategori = form.querySelector('select[name="kategori"]')?.value;
-				const jenisHardware = form.querySelector('select[name="jenis_hardware"]')?.value;
-
-				if (kategori === 'hardware' && !jenisHardware) {
+				const deviceId = form.querySelector('select[name="device_id"]')?.value;
+				if (kategori === 'hardware' && !deviceId) {
 					event.preventDefault();
 					if (typeof Swal !== 'undefined') {
 						Swal.fire({
 							icon: 'warning',
 							title: 'Perhatian',
-							text: 'Jenis hardware harus dipilih.',
+							text: 'Perangkat wajib dipilih untuk kategori Hardware.',
 							confirmButtonText: 'OK'
 						});
 					}
@@ -140,21 +139,58 @@
 			});
 		}
 
-		function toggleKategoriHardware(value) {
-			const hardwareWrap = document.getElementById('hardwareWrap');
-			const hardwareSelect = document.getElementById('hardwareSelect');
-			if (!hardwareWrap) return;
-
-			const isHardware = value === 'hardware';
-			hardwareWrap.classList.toggle('d-none', !isHardware);
-			if (!isHardware && hardwareSelect) {
-				hardwareSelect.value = '';
-			}
-		}
-
 		document.addEventListener('DOMContentLoaded', () => {
-			const kategoriSelect = document.getElementById('kategoriSelect');
-			if (kategoriSelect) toggleKategoriHardware(kategoriSelect.value);
+			async function loadDevices() {
+				const roomId = roomSelect.value;
+				const kategori = kategoriSelect.value;
+				deviceSelect.innerHTML = '<option value="">Pilih Perangkat</option>';
+				deviceSelect.disabled = true;
+				const help = document.getElementById('deviceHelp');
+				if (help) help.textContent = 'Pilih kategori Hardware dan ruangan terlebih dahulu.';
+
+				if (!roomId || kategori !== 'hardware') {
+					return;
+				}
+
+				try {
+					const res = await fetch(`/helpdesk/devices?room_id=${encodeURIComponent(roomId)}`);
+					const data = await res.json();
+					if (Array.isArray(data)) {
+						const selected = deviceSelect.dataset.selected;
+						data.forEach((device) => {
+							const option = document.createElement('option');
+							option.value = device.id;
+							option.textContent = device.device_name || `Perangkat #${device.id}`;
+							if (selected && String(selected) === String(device.id)) {
+								option.selected = true;
+							}
+							deviceSelect.appendChild(option);
+						});
+					}
+					deviceSelect.disabled = false;
+					if (help) help.textContent = data.length ? 'Pilih perangkat yang sesuai.' : 'Tidak ada perangkat di ruangan ini.';
+				} catch (e) {
+					deviceSelect.disabled = true;
+					if (help) help.textContent = 'Gagal memuat perangkat.';
+				}
+			}
+
+			if (roomSelect) {
+				roomSelect.addEventListener('change', loadDevices);
+			}
+			if (kategoriSelect) {
+				kategoriSelect.addEventListener('change', () => {
+					if (kategoriSelect.value !== 'hardware') {
+						deviceSelect.value = '';
+						deviceSelect.dataset.selected = '';
+					}
+					loadDevices();
+				});
+			}
+
+			if (roomSelect.value || kategoriSelect.value) {
+				loadDevices();
+			}
 		});
 	</script>
 @endsection
