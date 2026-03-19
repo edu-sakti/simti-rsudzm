@@ -53,7 +53,14 @@
                 <tr>
                   <td>{{ ($cctvs->currentPage() - 1) * $cctvs->perPage() + $index + 1 }}</td>
                   <td>{{ $cctv->room->name ?? $cctv->room_id }}</td>
-                  <td>{{ ucfirst(str_replace('_', ' ', $cctv->status)) }}</td>
+                  <td>
+                    @php
+                      $isAktif = ($cctv->status ?? '') === 'aktif';
+                    @endphp
+                    <span class="badge {{ $isAktif ? 'bg-success' : 'bg-danger' }}">
+                      {{ $isAktif ? 'Aktif' : 'Non Aktif' }}
+                    </span>
+                  </td>
                   <td>{{ $cctv->keterangan ?? '-' }}</td>
                   <td>
                     <div class="d-flex gap-2">

@@ -23,6 +23,12 @@
               'kepala_ruangan' => 'Kepala Ruangan',
             ];
             $roleLabel = $roleLabelMap[$role] ?? ucfirst($role);
+            if (($role === 'admin') || (Auth::user()->is_admin ?? false)) {
+              $roleLabel = 'Admin';
+            } elseif ($role === 'manajemen') {
+              $jabatan = Auth::user()->jabatan_id ?: 'Tanpa Jabatan';
+              $roleLabel = 'M - ' . strtoupper($jabatan);
+            }
             if ($role === 'kepala_ruangan') {
               $roomName = Auth::user()->room->name ?? 'Tanpa Ruangan';
               $roleLabel = trim('KARU ' . $roomName);

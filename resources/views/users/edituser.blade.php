@@ -65,21 +65,24 @@
           {{-- Role --}}
           <div class="col-md-6">
             <label for="edit_role" class="form-label">Role</label>
-            <select id="edit_role" name="role" class="form-select" required {{ ($user->role ?? '') === 'admin' ? 'disabled' : '' }}>
             @php($currentRole = old('role', $user->role ?? 'petugas_it'))
-            @if($currentRole === 'admin')
-              <option value="admin" selected>Admin</option>
-            @else
-              <option value="admin" {{ $currentRole === 'admin' ? 'selected' : '' }}>Admin</option>
+            @php($currentRole = $currentRole === 'admin' ? 'petugas_it' : $currentRole)
+            <select id="edit_role" name="role" class="form-select" required>
               <option value="petugas_it" {{ in_array($currentRole, ['petugas_it','petugas','staff'], true) ? 'selected' : '' }}>Petugas IT</option>
               <option value="petugas_helpdesk" {{ $currentRole === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
               <option value="manajemen" {{ $currentRole === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
-                <option value="kepala_ruangan" {{ $currentRole === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
-              @endif
+              <option value="kepala_ruangan" {{ $currentRole === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
             </select>
-            @if(($user->role ?? '') === 'admin')
-              <input type="hidden" name="role" value="admin">
-            @endif
+          </div>
+
+          {{-- Admin Access (khusus role petugas IT) --}}
+          <div class="col-md-6" id="admin-wrapper" style="display:none;">
+            <label class="form-label d-block">Akses Admin</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin" value="1" {{ old('is_admin', ($user->is_admin ?? false) || ($user->role ?? '') === 'admin') ? 'checked' : '' }}>
+              <label class="form-check-label" for="is_admin">Jadikan sebagai Admin</label>
+            </div>
+            <div class="text-muted small mt-1">Jika dicentang, user ini memiliki akses admin sekaligus Petugas IT.</div>
           </div>
 
           {{-- Ruangan (khusus kepala ruangan) --}}
@@ -163,6 +166,8 @@
     const roleSelect = document.getElementById('edit_role');
     const roomWrapper = document.getElementById('room-wrapper');
     const manajemenWrapper = document.getElementById('manajemen-wrapper');
+    const adminWrapper = document.getElementById('admin-wrapper');
+    const adminCheckbox = document.getElementById('is_admin');
     const toggleExtras = () => {
       if (roleSelect.value === 'kepala_ruangan') {
         roomWrapper.style.display = '';
@@ -173,6 +178,12 @@
         manajemenWrapper.style.display = '';
       } else {
         manajemenWrapper.style.display = 'none';
+      }
+      if (roleSelect.value === 'petugas_it') {
+        adminWrapper.style.display = '';
+      } else {
+        adminWrapper.style.display = 'none';
+        if (adminCheckbox) adminCheckbox.checked = false;
       }
     };
     roleSelect.addEventListener('change', toggleExtras);
@@ -243,6 +254,15 @@
         icon: 'error',
         title: 'Gagal',
         html: `{!! implode('<br>', $errors->all()) !!}`
+      });
+    }
+  @endif
+  @if (session('error'))
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal',
+        text: {!! json_encode(session('error')) !!}
       });
     }
   @endif

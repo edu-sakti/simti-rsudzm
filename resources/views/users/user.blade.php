@@ -69,6 +69,14 @@
                       'kepala_ruangan' => ['label' => 'KEPALA RUANGAN', 'class' => 'warning'],
                     ];
                     $roleMeta = $roleLabelMap[$user->role] ?? ['label' => strtoupper($user->role), 'class' => 'secondary'];
+                    $isAdminUser = (($user->is_admin ?? false) || $user->role === 'admin');
+                    if ($isAdminUser) {
+                      $roleMeta = ['label' => 'ADMIN', 'class' => 'primary'];
+                    }
+                    if (!$isAdminUser && $user->role === 'manajemen') {
+                      $jabatan = $user->jabatan_id ?: 'Tanpa Jabatan';
+                      $roleMeta['label'] = 'M - ' . strtoupper($jabatan);
+                    }
                     if ($user->role === 'kepala_ruangan') {
                       $roomName = $user->room->name ?? 'Tanpa Ruangan';
                       $roleMeta['label'] = 'KARU ' . $roomName;
@@ -94,7 +102,7 @@
                         </a>
                       @endif
 
-                      @if(!$user->is_verified && auth()->check() && auth()->user()->role === 'admin')
+                      @if(!$user->is_verified && auth()->check() && (auth()->user()->is_admin ?? false))
                         <form method="POST" action="{{ route('users.verify', $encoded) }}" class="js-verify-form" data-username="{{ $user->username }}">
                           @csrf
                           <button type="submit" class="btn btn-sm btn-outline-primary">Validasi</button>

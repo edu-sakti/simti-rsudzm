@@ -89,9 +89,6 @@
               <label for="role" class="form-label">Role</label>
               <select id="role" name="role" class="form-select" required {{ isset($invite_role) ? 'disabled' : '' }}>
                 @if (!isset($invite_code))
-                  <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
-                @endif
-                @if (!isset($invite_code))
                   <option value="petugas_it" {{ old('role') === 'petugas_it' ? 'selected' : '' }}>Petugas IT</option>
                   <option value="petugas_helpdesk" {{ old('role') === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
                   <option value="manajemen" {{ old('role') === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
@@ -110,6 +107,18 @@
                 <div class="text-danger small">{{ $message }}</div>
               @enderror
             </div>
+
+            {{-- Admin Access (khusus role petugas IT) --}}
+            @if (!isset($invite_code))
+              <div class="col-md-6" id="admin-wrapper" style="display:none;">
+                <label class="form-label d-block">Akses Admin</label>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin" value="1" {{ old('is_admin') ? 'checked' : '' }}>
+                  <label class="form-check-label" for="is_admin">Jadikan sebagai Admin</label>
+                </div>
+                <div class="text-muted small mt-1">Jika dicentang, user ini memiliki akses admin sekaligus Petugas IT.</div>
+              </div>
+            @endif
 
             {{-- Ruangan (khusus kepala ruangan) --}}
             <div class="col-md-6" id="room-wrapper" style="display:none;">
@@ -183,6 +192,8 @@
     const roleSelect = document.getElementById('role');
     const roomWrapper = document.getElementById('room-wrapper');
     const manajemenWrapper = document.getElementById('manajemen-wrapper');
+    const adminWrapper = document.getElementById('admin-wrapper');
+    const adminCheckbox = document.getElementById('is_admin');
     const toggleExtras = () => {
       if (roleSelect.value === 'kepala_ruangan') {
         roomWrapper.style.display = '';
@@ -193,6 +204,14 @@
         manajemenWrapper.style.display = '';
       } else {
         manajemenWrapper.style.display = 'none';
+      }
+      if (adminWrapper) {
+        if (roleSelect.value === 'petugas_it') {
+          adminWrapper.style.display = '';
+        } else {
+          adminWrapper.style.display = 'none';
+          if (adminCheckbox) adminCheckbox.checked = false;
+        }
       }
     };
     roleSelect.addEventListener('change', toggleExtras);

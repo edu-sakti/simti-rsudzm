@@ -217,7 +217,8 @@ Route::post('/pengguna', function (Request $request) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan,petugas,staff,admin'],
+        'is_admin' => ['nullable', 'boolean'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
@@ -248,8 +249,29 @@ Route::post('/pengguna', function (Request $request) {
         }
     }
 
-    if (in_array($data['role'], ['staff', 'petugas'], true)) {
+    $wasAdminRole = $data['role'] === 'admin';
+    if (in_array($data['role'], ['staff', 'petugas', 'admin'], true)) {
         $data['role'] = 'petugas_it';
+    }
+    $data['is_admin'] = filter_var($data['is_admin'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    if ($wasAdminRole) {
+        $data['is_admin'] = true;
+    }
+    if ($data['is_admin']) {
+        $data['role'] = 'petugas_it';
+    }
+    $wasAdminUser = ($user->is_admin ?? false) || ($user->role === 'admin');
+    $willBeAdmin = $data['is_admin'];
+    if ($wasAdminUser && !$willBeAdmin && auth()->check() && auth()->user()->username === $user->username) {
+        return back()->withInput()->with('error', 'Tidak bisa menonaktifkan admin pada akun yang sedang login.');
+    }
+    if ($wasAdminUser && !$willBeAdmin) {
+        $adminCount = User::where(function ($q) {
+            $q->where('is_admin', true)->orWhere('role', 'admin');
+        })->count();
+        if ($adminCount <= 1) {
+            return back()->withInput()->with('error', 'Tidak bisa menonaktifkan admin terakhir.');
+        }
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
@@ -292,7 +314,7 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan,petugas,staff,admin'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
@@ -328,8 +350,13 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         }
     }
 
-    if (in_array($data['role'], ['staff', 'petugas'], true)) {
+    $wasAdminRole = $data['role'] === 'admin';
+    if (in_array($data['role'], ['staff', 'petugas', 'admin'], true)) {
         $data['role'] = 'petugas_it';
+    }
+    $data['is_admin'] = false;
+    if ($wasAdminRole) {
+        $data['is_admin'] = true;
     }
     if ($data['role'] !== 'kepala_ruangan') {
         $data['room_id'] = null;
@@ -383,7 +410,8 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
-        'role' => ['required', 'in:admin,petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan,petugas,staff,admin'],
+        'is_admin' => ['nullable', 'boolean'],
         'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
         'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
         'phone' => ['required', 'regex:/^62\d{8,15}$/', Rule::unique('users', 'phone')->ignore($user->username, 'username')],
@@ -398,7 +426,15 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     if (empty($data['password'])) {
         unset($data['password']);
     }
-    if (in_array($data['role'], ['staff', 'petugas'], true)) {
+    $wasAdminRole = $data['role'] === 'admin';
+    if (in_array($data['role'], ['staff', 'petugas', 'admin'], true)) {
+        $data['role'] = 'petugas_it';
+    }
+    $data['is_admin'] = filter_var($data['is_admin'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    if ($wasAdminRole) {
+        $data['is_admin'] = true;
+    }
+    if ($data['is_admin']) {
         $data['role'] = 'petugas_it';
     }
     if ($data['role'] !== 'kepala_ruangan') {
@@ -445,7 +481,7 @@ Route::delete('/pengguna/{encoded}', function (string $encoded) {
 })->name('users.destroy')->middleware(['auth', 'admin']);
 
 Route::post('/pengguna/{encoded}/validasi', function (string $encoded, Request $request) {
-    if (!auth()->check() || auth()->user()->role !== 'admin') {
+    if (!auth()->check() || !(auth()->user()->is_admin ?? false)) {
         abort(403);
     }
     try {
@@ -1061,7 +1097,7 @@ Route::delete('/helpdesk/{ticket}', function (HelpdeskTicket $ticket) {
 
 Route::get('/detail-ticket/{no_ticket}', function (string $noTicket) {
     $user = auth()->user();
-    if ($user && !in_array($user->role, ['admin', 'petugas_helpdesk'], true)) {
+    if ($user && !in_array($user->role, ['petugas_helpdesk'], true) && !($user->is_admin ?? false) && $user->role !== 'admin') {
         abort(403);
     }
     $ticket = DB::table('helpdesk_tickets')
@@ -1087,7 +1123,7 @@ Route::get('/detail-ticket/{no_ticket}', function (string $noTicket) {
 })->name('helpdesk.show.internal')->middleware(['auth', 'permission:helpdesk,read']);
 
 Route::get('/helpdesk/detail-ticket/{token}', function (string $token) {
-    if (auth()->check() && !in_array(auth()->user()->role, ['petugas_it', 'admin'], true)) {
+    if (auth()->check() && !in_array(auth()->user()->role, ['petugas_it'], true) && !(auth()->user()->is_admin ?? false) && auth()->user()->role !== 'admin') {
         abort(403);
     }
 

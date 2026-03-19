@@ -7,12 +7,16 @@
 		<ul class="sidebar-nav">
 			@php
 				$role = auth()->user()->role ?? null;
+				$isAdmin = (bool) (auth()->user()->is_admin ?? false);
+				if ($role === 'admin') {
+					$isAdmin = true;
+				}
 				$permissionMap = collect();
-				if ($role && $role !== 'admin') {
+				if ($role && !$isAdmin) {
 					$permissionMap = \App\Models\RolePermission::where('role', $role)->get()->keyBy('menu');
 				}
-				$canMenu = function (string $key) use ($role, $permissionMap) {
-					if ($role === 'admin') {
+				$canMenu = function (string $key) use ($isAdmin, $permissionMap) {
+					if ($isAdmin) {
 						return true;
 					}
 					return (bool) ($permissionMap[$key]->can_read ?? false);
@@ -106,7 +110,7 @@
 				@endif
 			</li>
 
-			@if(auth()->check() && auth()->user()->role === 'admin')
+			@if(auth()->check() && (auth()->user()->is_admin ?? false))
 				<li class="sidebar-item {{ request()->is('pengguna') ? 'active' : '' }}">
 					<a class="sidebar-link" href="{{ url('/pengguna') }}">
 						<i class="align-middle" data-feather="user"></i>
@@ -139,7 +143,7 @@
 				@endif
 			</li>
 
-			@if(auth()->check() && auth()->user()->role === 'admin')
+			@if(auth()->check() && (auth()->user()->is_admin ?? false))
 				<li class="sidebar-item {{ request()->is('whatsapp-gateway') ? 'active' : '' }}">
 					<a class="sidebar-link" href="{{ url('whatsapp-gateway') }}">
 						<i class="align-middle" data-feather="message-square"></i>

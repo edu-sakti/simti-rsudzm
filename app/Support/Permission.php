@@ -14,7 +14,7 @@ class Permission
         if (!$user) {
             return false;
         }
-        if ($user->role === 'admin') {
+        if (($user->is_admin ?? false) || $user->role === 'admin') {
             return true;
         }
 
