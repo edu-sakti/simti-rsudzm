@@ -73,13 +73,10 @@ Route::get('/persuratan/arsip-surat', function () {
 })->middleware(['auth', 'permission:arsip_surat,read']);
 
 // ---------------- Pengaduan ----------------
-Route::get('/pengaduan/data', function () {
-    return view('pengaduan.data-pengaduan');
+Route::get('/pengaduan/pengaduan', function () {
+    return view('pengaduan.index');
 })->middleware(['auth', 'permission:pengaduan_data,read']);
 
-Route::get('/pengaduan/kategori', function () {
-    return view('pengaduan.kategori');
-})->middleware(['auth', 'permission:pengaduan_kategori,read']);
 
 // ---------------- Kepegawaian ----------------
 Route::get('/kepegawaian/data-pegawai', function () {
@@ -141,20 +138,32 @@ Route::get('/apps', function () {
 
 Route::get('/apps/launch/{app}', function (Request $request, string $app) {
     $app = strtolower($app);
+    if (in_array($app, ['inventaris', 'jaringan', 'monitoring'], true)) {
+        $app = 'master-data';
+    }
+    if (in_array($app, ['manajemen-pengguna', 'pengguna'], true)) {
+        $app = 'manajemen-pengguna';
+    }
+    if ($app === 'setting') {
+        $app = 'integrasi';
+    }
+
+    $request->session()->put('active_app', $app);
+    return redirect('/dashboard');
     $apps = [
         'helpdesk' => [
             ['menu' => 'dashboard', 'url' => url('/dashboard')],
             ['menu' => 'helpdesk', 'url' => url('/helpdesk')],
             ['menu' => 'laporan', 'url' => url('/laporan')],
         ],
-        'inventaris' => [
+        'master-data' => [
             ['menu' => 'perangkat', 'url' => url('/perangkat')],
             ['menu' => 'ruangan', 'url' => url('/ruangan')],
-            ['menu' => 'spesifikasi_perangkat', 'url' => url('/perangkat/spesifikasi-perangkat')],
-        ],
-        'jaringan' => [
+            ['menu' => 'pj_ruangan', 'url' => url('/pj-ruangan')],
+            ['menu' => 'roles', 'url' => url('/roles')],
             ['menu' => 'ip_address', 'url' => url('/ip-address')],
             ['menu' => 'isp', 'url' => url('/isp')],
+            ['menu' => 'cctv', 'url' => url('/cctv')],
         ],
         'persuratan' => [
             ['menu' => 'surat_masuk', 'url' => url('/persuratan/surat-masuk')],
@@ -163,8 +172,7 @@ Route::get('/apps/launch/{app}', function (Request $request, string $app) {
             ['menu' => 'arsip_surat', 'url' => url('/persuratan/arsip-surat')],
         ],
         'pengaduan' => [
-            ['menu' => 'pengaduan_data', 'url' => url('/pengaduan/data')],
-            ['menu' => 'pengaduan_kategori', 'url' => url('/pengaduan/kategori')],
+            ['menu' => 'pengaduan_data', 'url' => url('/pengaduan/pengaduan')],
         ],
         'kepegawaian' => [
             ['menu' => 'data_pegawai', 'url' => url('/kepegawaian/data-pegawai')],
@@ -180,11 +188,10 @@ Route::get('/apps/launch/{app}', function (Request $request, string $app) {
             ['menu' => 'legalitas_sip', 'url' => url('/kepegawaian/legalitas/sip')],
             ['menu' => 'legalitas_str', 'url' => url('/kepegawaian/legalitas/str')],
         ],
-        'monitoring' => [
-            ['menu' => 'cctv', 'url' => url('/cctv')],
-        ],
         'manajemen-pengguna' => [
+            ['menu' => 'profil', 'url' => url('/profil'), 'admin_only' => true],
             ['menu' => 'pengguna', 'url' => url('/pengguna'), 'admin_only' => true],
+            ['menu' => 'peran_pengguna', 'url' => url('/peran-pengguna'), 'admin_only' => true],
             ['menu' => 'hak_akses', 'url' => url('/hak-akses'), 'admin_only' => true],
         ],
         'integrasi' => [
@@ -258,14 +265,14 @@ if (!function_exists('hakAksesMenuGroups')) {
             'Helpdesk' => [
                 ['key' => 'helpdesk', 'label' => 'Tiket', 'actions' => ['read','create','update','delete']],
             ],
-            'Inventaris' => [
+            'Master Data' => [
                 ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read','create','update','delete']],
                 ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'spesifikasi_perangkat', 'label' => 'Spesifikasi', 'actions' => ['read','create','update','delete']],
-            ],
-            'Jaringan' => [
+                ['key' => 'pj_ruangan', 'label' => 'PJ Ruangan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'roles', 'label' => 'Roles', 'actions' => ['read','create','update']],
                 ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read','create','update','delete']],
                 ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read','create','update','delete']],
+                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
             ],
             'Persuratan' => [
                 ['key' => 'surat_masuk', 'label' => 'Surat Masuk', 'actions' => ['read','create','update','delete']],
@@ -274,8 +281,7 @@ if (!function_exists('hakAksesMenuGroups')) {
                 ['key' => 'arsip_surat', 'label' => 'Arsip Surat', 'actions' => ['read','create','update','delete']],
             ],
             'Pengaduan' => [
-                ['key' => 'pengaduan_data', 'label' => 'Data Pengaduan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'pengaduan_kategori', 'label' => 'Kategori', 'actions' => ['read','create','update','delete']],
+                ['key' => 'pengaduan_data', 'label' => 'Pengaduan', 'actions' => ['read','create','update','delete']],
             ],
             'Kepegawaian' => [
                 ['key' => 'data_pegawai', 'label' => 'Data Pegawai', 'actions' => ['read','create','update','delete']],
@@ -291,11 +297,10 @@ if (!function_exists('hakAksesMenuGroups')) {
                 ['key' => 'legalitas_sip', 'label' => 'SIP', 'actions' => ['read','create','update','delete']],
                 ['key' => 'legalitas_str', 'label' => 'STR', 'actions' => ['read','create','update','delete']],
             ],
-            'CCTV' => [
-                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
-            ],
             'Pengguna' => [
+                ['key' => 'profil', 'label' => 'Profil', 'actions' => ['read','update']],
                 ['key' => 'pengguna', 'label' => 'Pengguna', 'actions' => ['read','create','update','delete']],
+                ['key' => 'peran_pengguna', 'label' => 'Peran', 'actions' => ['read','create','update','delete']],
                 ['key' => 'hak_akses', 'label' => 'Hak Akses', 'actions' => ['read','update']],
             ],
             'Integrasi' => [
@@ -319,8 +324,16 @@ Route::get('/pengguna', function (Request $request) {
         ->paginate(10)
         ->withQueryString();
 
-    return view('users.user', compact('users', 'search'));
+    return view('users.index', compact('users', 'search'));
 })->name('users.index')->middleware(['auth', 'admin']);
+
+Route::get('/profil', function () {
+    return view('profile.index');
+})->name('profil.index')->middleware(['auth', 'admin']);
+
+Route::get('/peran-pengguna', function () {
+    return view('peran.index');
+})->name('peran.index')->middleware(['auth', 'admin']);
 
 Route::get('/pengguna/tambah-link', function (Request $request) {
     $role = $request->query('role');
@@ -341,18 +354,18 @@ Route::get('/pengguna/tambah-link', function (Request $request) {
 
 Route::get('/pengguna/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
-    return view('users.adduser', compact('rooms'));
+    return view('users.create', compact('rooms'));
 })->name('users.create')->middleware(['auth', 'admin']);
 
-Route::get('/pengguna/tambah/{kode}', function (string $kode) {
-    $invite = Cache::get('user_invite_' . $kode);
+Route::get('/pengguna/tambah/{token}', function (string $token) {
+    $invite = Cache::get('user_invite_' . $token);
     if (!$invite || empty($invite['valid'])) {
         abort(403);
     }
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
-    return view('users.adduser', [
+    return view('users.create', [
         'rooms' => $rooms,
-        'invite_code' => $kode,
+        'invite_code' => $token,
         'invite_role' => $invite['role'] ?? null,
     ]);
 })->name('users.create.invite');
@@ -586,7 +599,7 @@ Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
     }
     $user = User::findOrFail($username);
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
-    return view('users.edituser', ['user' => $user, 'encoded' => $encoded, 'rooms' => $rooms]);
+    return view('users.edit', ['user' => $user, 'encoded' => $encoded, 'rooms' => $rooms]);
 })->name('users.edit')->middleware(['auth', 'admin']);
 
 Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
@@ -718,7 +731,7 @@ Route::get('/ruangan', function (Request $request) use ($roomCategories) {
 
     $categories = array_keys($roomCategories);
 
-    return view('ruangan.ruangan', [
+    return view('ruangan.index', [
         'rooms' => $rooms,
         'search' => $search,
         'selectedKategori' => $kategori,
@@ -726,8 +739,82 @@ Route::get('/ruangan', function (Request $request) use ($roomCategories) {
     ]);
 })->name('rooms.index')->middleware(['auth', 'permission:ruangan,read']);
 
+Route::get('/pj-ruangan', function () {
+    return view('pj-ruangan.index');
+})->name('rooms.pj')->middleware(['auth', 'permission:pj_ruangan,read']);
+
+// ---------------- Roles (Master Data) ----------------
+Route::get('/roles', function (Request $request) {
+    $search = $request->query('q');
+    $roles = DB::table('roles')
+        ->when($search, function ($query, $search) {
+            $query->where('name', 'like', "%{$search}%");
+        })
+        ->orderBy('name')
+        ->paginate(20)
+        ->withQueryString();
+
+    return view('roles.index', compact('roles', 'search'));
+})->name('roles.index')->middleware(['auth', 'permission:roles,read']);
+
+Route::get('/roles/create', function () {
+    return view('roles.create');
+})->name('roles.create')->middleware(['auth', 'permission:roles,create']);
+
+Route::post('/roles', function (Request $request) {
+    $data = $request->validate([
+        'name' => ['required', 'string', 'max:100', 'unique:roles,name'],
+        'description' => ['nullable', 'string'],
+    ]);
+
+    DB::table('roles')->insert([
+        'name' => $data['name'],
+        'description' => $data['description'] ?? null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return redirect()->route('roles.index')->with('success', 'Role berhasil ditambahkan.');
+})->name('roles.store')->middleware(['auth', 'permission:roles,create']);
+
+Route::get('/roles/{id}/edit', function (string $id) {
+    $role = DB::table('roles')->where('id', $id)->first();
+    if (!$role) {
+        abort(404);
+    }
+    return view('roles.edit', compact('role'));
+})->name('roles.edit')->middleware(['auth', 'permission:roles,update']);
+
+Route::put('/roles/{id}', function (Request $request, string $id) {
+    $role = DB::table('roles')->where('id', $id)->first();
+    if (!$role) {
+        abort(404);
+    }
+    $data = $request->validate([
+        'name' => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($id)],
+        'description' => ['nullable', 'string'],
+    ]);
+
+    DB::table('roles')->where('id', $id)->update([
+        'name' => $data['name'],
+        'description' => $data['description'] ?? null,
+        'updated_at' => now(),
+    ]);
+
+    return redirect()->route('roles.index')->with('success', 'Role berhasil diperbarui.');
+})->name('roles.update')->middleware(['auth', 'permission:roles,update']);
+
+Route::delete('/roles/{id}', function (string $id) {
+    $role = DB::table('roles')->where('id', $id)->first();
+    if (!$role) {
+        abort(404);
+    }
+    DB::table('roles')->where('id', $id)->delete();
+    return redirect()->route('roles.index')->with('success', 'Role berhasil dihapus.');
+})->name('roles.destroy')->middleware(['auth', 'permission:roles,delete']);
+
 Route::get('/ruangan/tambah', function () use ($roomCategories) {
-    return view('ruangan.addruangan', ['categories' => $roomCategories]);
+    return view('ruangan.create', ['categories' => $roomCategories]);
 })->name('rooms.create')->middleware(['auth', 'permission:ruangan,create']);
 
 Route::post('/ruangan', function (Request $request) use ($roomCategories) {
@@ -754,7 +841,7 @@ Route::get('/ruangan/{encoded}/edit', function (string $encoded) use ($roomCateg
         abort(404);
     }
     $room = Room::findOrFail($roomId);
-    return view('ruangan.editruangan', ['room' => $room, 'encoded' => $encoded, 'categories' => $roomCategories]);
+    return view('ruangan.edit', ['room' => $room, 'encoded' => $encoded, 'categories' => $roomCategories]);
 })->name('rooms.edit')->middleware(['auth', 'permission:ruangan,update']);
 
 Route::put('/ruangan/{encoded}', function (Request $request, string $encoded) use ($roomCategories) {
@@ -802,7 +889,7 @@ Route::delete('/ruangan/{encoded}', function (string $encoded) {
 // ---------------- Hak Akses ----------------
 Route::get('/hak-akses', function () {
     $menuGroups = hakAksesMenuGroups();
-    return view('hak-akses.hakakses', compact('menuGroups'));
+    return view('hak-akses.index', compact('menuGroups'));
 })->name('hakakses.index')->middleware(['auth', 'admin']);
 
 Route::get('/hak-akses/permissions', function (Request $request) {
@@ -929,12 +1016,12 @@ Route::get('/cctv', function (Request $request) {
         ->paginate(20)
         ->withQueryString();
 
-    return view('cctv.cctv', compact('cctvs', 'status', 'q'));
+    return view('cctv.index', compact('cctvs', 'status', 'q'));
 })->name('cctv.index')->middleware(['auth', 'permission:cctv,read']);
 
 Route::get('/cctv/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['room_id', 'name']);
-    return view('cctv.addcctv', ['rooms' => $rooms]);
+    return view('cctv.create', ['rooms' => $rooms]);
 })->name('cctv.create')->middleware(['auth', 'permission:cctv,create']);
 
 Route::post('/cctv/tambah', function (Request $request) {
@@ -963,7 +1050,7 @@ Route::get('/cctv/{encoded}/edit', function (string $encoded) {
     }
     $cctv = Cctv::findOrFail($id);
     $rooms = Room::orderBy('name')->get(['room_id', 'name']);
-    return view('cctv.editcctv', [
+    return view('cctv.edit', [
         'cctv' => $cctv,
         'rooms' => $rooms,
         'encoded' => $encoded,
@@ -1012,12 +1099,12 @@ Route::get('/isp', function () {
         ->select('isps.*', 'rooms.name as room_name', 'rooms.room_id as room_code')
         ->orderBy('isps.nama_isp')
         ->get();
-    return view('isp.isp', compact('isps'));
+    return view('isp.index', compact('isps'));
 })->name('isp.index')->middleware(['auth', 'permission:isp,read']);
 
 Route::get('/isp/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
-    return view('isp.addisp', compact('rooms'));
+    return view('isp.create', compact('rooms'));
 })->name('isp.create')->middleware(['auth', 'permission:isp,create']);
 
 Route::post('/isp/tambah', function (Request $request) {
@@ -1056,7 +1143,7 @@ Route::get('/isp/{encoded}/edit', function (string $encoded) {
         abort(404);
     }
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
-    return view('isp.editisp', ['isp' => $isp, 'encoded' => $encoded, 'rooms' => $rooms]);
+    return view('isp.edit', ['isp' => $isp, 'encoded' => $encoded, 'rooms' => $rooms]);
 })->name('isp.edit')->middleware(['auth', 'permission:isp,update']);
 
 Route::put('/isp/{encoded}', function (Request $request, string $encoded) {
@@ -1122,10 +1209,14 @@ Route::get('/helpdesk', function () {
         ->orderByDesc('helpdesk_tickets.id')
         ->get();
 
-    return view('helpdesk.helpdesk', [
+    return view('helpdesk.index', [
         'tickets' => $tickets,
     ]);
 })->name('helpdesk.index')->middleware(['auth', 'permission:helpdesk,read']);
+
+Route::get('/helpdesk/request', function () {
+    return view('helpdesk.request');
+})->name('helpdesk.request')->middleware(['auth', 'permission:helpdesk,create']);
 
 Route::get('/helpdesk/tambah-ticket', function () {
     $rooms = \App\Models\Room::query()
@@ -1138,7 +1229,7 @@ Route::get('/helpdesk/tambah-ticket', function () {
         ->orderBy('name')
         ->get();
 
-    return view('helpdesk.addticket', [
+    return view('helpdesk.create', [
         'rooms' => $rooms,
         'petugas' => $petugas,
     ]);
@@ -1308,7 +1399,7 @@ Route::get('/detail-ticket/{no_ticket}', function (string $noTicket) {
         abort(404);
     }
 
-    return view('helpdesk.detailticket', [
+    return view('helpdesk.detail', [
         'ticket' => $ticket,
     ]);
 })->name('helpdesk.show.internal')->middleware(['auth', 'permission:helpdesk,read']);
@@ -1341,7 +1432,7 @@ Route::get('/helpdesk/detail-ticket/{token}', function (string $token) {
         abort(404);
     }
 
-    return view('helpdesk.detailticket', [
+    return view('helpdesk.detail', [
         'ticket' => $ticket,
         'token' => $token,
     ]);
@@ -1373,7 +1464,7 @@ Route::post('/helpdesk/detail-ticket/{token}/progress', function (string $token)
 
 // ---------------- Laporan ----------------
 Route::get('/laporan', function () {
-    return view('laporan.laporan');
+    return view('laporan.index');
 })->name('laporan.index')->middleware(['auth', 'permission:laporan,read']);
 
 // ---------------- WA Gateway ----------------
@@ -1494,11 +1585,11 @@ Route::get('/ip-address', function (Request $request) {
         ->paginate(20)
         ->withQueryString();
 
-    return view('ipaddress.ipaddr', compact('ipAddrs', 'status', 'q'));
+    return view('ipaddress.index', compact('ipAddrs', 'status', 'q'));
 })->name('ipaddr.index')->middleware(['auth', 'permission:ip_address,read']);
 
 Route::get('/ip-address/tambah', function () {
-    return view('ipaddress.addipaddress');
+    return view('ipaddress.add');
 })->name('ipaddr.create')->middleware(['auth', 'permission:ip_address,create']);
 
 Route::post('/ip-address/tambah', function (Request $request) {
@@ -1539,7 +1630,7 @@ Route::get('/ip-address/{encoded}/edit', function (string $encoded) {
         abort(404);
     }
     $ip = IpAddr::findOrFail($id);
-    return view('ipaddress.editipaddress', compact('ip'));
+    return view('ipaddress.edit', compact('ip'));
 })->name('ipaddr.edit')->middleware(['auth', 'permission:ip_address,update']);
 
 Route::put('/ip-address/{encoded}', function (Request $request, string $encoded) {
@@ -1881,7 +1972,7 @@ Route::get('/auth/otp', function () {
 })->name('auth.otp');
 
 Route::get('/forget-password', function () {
-    return view('auth.forgetpassword');
+    return view('auth.forget-password');
 })->name('auth.forget');
 
 Route::post('/forget-password', function (Request $request) {
@@ -1933,7 +2024,7 @@ Route::get('/change-password/{token}', function (string $token) {
     if (!$user) {
         abort(404);
     }
-    return view('auth.changepassword', ['user' => $user, 'token' => $token]);
+    return view('auth.change-password', ['user' => $user, 'token' => $token]);
 })->name('auth.change');
 
 Route::post('/change-password/{token}', function (Request $request, string $token) {

@@ -1,15 +1,14 @@
 <nav id="sidebar" class="sidebar js-sidebar">
 	<div class="sidebar-content js-simplebar">
 		@php
-			$activeApp = session('active_app');
+			$activeAppRaw = session('active_app');
+			$activeApp = in_array($activeAppRaw, ['inventaris', 'jaringan', 'monitoring'], true) ? 'master-data' : $activeAppRaw;
 			$portalTitleMap = [
 				'helpdesk' => 'Helpdesk',
-				'inventaris' => 'Inventaris',
-				'jaringan' => 'Jaringan',
+				'master-data' => 'Master Data',
 				'persuratan' => 'Persuratan',
 				'pengaduan' => 'Pengaduan',
 				'kepegawaian' => 'Kepegawaian',
-				'monitoring' => 'CCTV',
 				'manajemen-pengguna' => 'Pengguna',
 				'integrasi' => 'Setting',
 			];
@@ -38,10 +37,9 @@
 				};
 				$appMenus = [
 					'helpdesk' => ['dashboard', 'helpdesk', 'laporan'],
-					'inventaris' => ['perangkat', 'ruangan', 'spesifikasi_perangkat'],
-					'jaringan' => ['ip_address', 'isp'],
+					'master-data' => ['perangkat', 'ruangan', 'pj_ruangan', 'roles', 'ip_address', 'isp', 'cctv'],
 					'persuratan' => ['surat_masuk', 'surat_keluar', 'disposisi', 'arsip_surat'],
-					'pengaduan' => ['pengaduan_data', 'pengaduan_kategori'],
+					'pengaduan' => ['pengaduan_data'],
 					'kepegawaian' => [
 						'data_pegawai',
 						'pegawai_pns',
@@ -56,8 +54,7 @@
 						'legalitas_sip',
 						'legalitas_str',
 					],
-					'monitoring' => ['cctv'],
-					'manajemen-pengguna' => ['pengguna', 'hak_akses'],
+					'manajemen-pengguna' => ['profil', 'pengguna', 'peran_pengguna', 'hak_akses'],
 					'integrasi' => ['wa_gateway', 'log_aktivitas'],
 				];
 				$showMenu = function (string $key) use ($activeApp, $appMenus) {
@@ -302,20 +299,11 @@
 				@endif
 			</li>
 
-			<li class="sidebar-item {{ request()->is('pengaduan/data') ? 'active' : '' }}">
+			<li class="sidebar-item {{ request()->is('pengaduan/pengaduan') ? 'active' : '' }}">
 				@if($canMenu('pengaduan_data') && $showMenu('pengaduan_data'))
-					<a class="sidebar-link" href="{{ url('/pengaduan/data') }}">
-						<i class="align-middle" data-feather="alert-circle"></i>
-						<span class="align-middle">Data Pengaduan</span>
-					</a>
-				@endif
-			</li>
-
-			<li class="sidebar-item {{ request()->is('pengaduan/kategori') ? 'active' : '' }}">
-				@if($canMenu('pengaduan_kategori') && $showMenu('pengaduan_kategori'))
-					<a class="sidebar-link" href="{{ url('/pengaduan/kategori') }}">
-						<i class="align-middle" data-feather="tag"></i>
-						<span class="align-middle">Kategori</span>
+					<a class="sidebar-link" href="{{ url('/pengaduan/pengaduan') }}">
+						<i class="align-middle" data-feather="message-circle"></i>
+						<span class="align-middle">Pengaduan</span>
 					</a>
 				@endif
 			</li>
@@ -342,13 +330,45 @@
 					</a>
 				@endif
 			</li>
+			<li class="sidebar-item {{ request()->is('pj-ruangan') ? 'active' : '' }}">
+				@if($canMenu('pj_ruangan') && $showMenu('pj_ruangan'))
+					<a class="sidebar-link" href="{{ url('/pj-ruangan') }}">
+						<i class="align-middle" data-feather="user-check"></i>
+						<span class="align-middle">PJ Ruangan</span>
+					</a>
+				@endif
+			</li>
+			<li class="sidebar-item {{ request()->is('roles*') ? 'active' : '' }}">
+				@if($canMenu('roles') && $showMenu('roles'))
+					<a class="sidebar-link" href="{{ url('/roles') }}">
+						<i class="align-middle" data-feather="shield"></i>
+						<span class="align-middle">Roles</span>
+					</a>
+				@endif
+			</li>
 
 			@if(auth()->check() && (auth()->user()->is_admin ?? false))
+				@if($showMenu('profil'))
+					<li class="sidebar-item {{ request()->is('profil') ? 'active' : '' }}">
+						<a class="sidebar-link" href="{{ url('/profil') }}">
+							<i class="align-middle" data-feather="user"></i>
+							<span class="align-middle">Profil</span>
+						</a>
+					</li>
+				@endif
 				@if($showMenu('pengguna'))
 					<li class="sidebar-item {{ request()->is('pengguna') ? 'active' : '' }}">
 						<a class="sidebar-link" href="{{ url('/pengguna') }}">
-							<i class="align-middle" data-feather="user"></i>
+							<i class="align-middle" data-feather="users"></i>
 							<span class="align-middle">Pengguna</span>
+						</a>
+					</li>
+				@endif
+				@if($showMenu('peran_pengguna'))
+					<li class="sidebar-item {{ request()->is('peran-pengguna') ? 'active' : '' }}">
+						<a class="sidebar-link" href="{{ url('/peran-pengguna') }}">
+							<i class="align-middle" data-feather="user-check"></i>
+							<span class="align-middle">Peran</span>
 						</a>
 					</li>
 				@endif

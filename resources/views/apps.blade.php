@@ -221,33 +221,22 @@
         </a>
       @endif
 
-      @if($appVisible(['perangkat','ruangan','spesifikasi_perangkat']))
-        <a href="{{ url('/apps/launch/inventaris') }}" class="app-tile" data-title="inventaris perangkat ruangan spesifikasi">
-          <div class="app-icon app-indigo"><i data-feather="box"></i></div>
-          <div class="app-name">Inventaris</div>
+      @if($isAdmin)
+        <a href="{{ url('/apps/launch/pengguna') }}" class="app-tile" data-title="manajemen pengguna hak akses">
+          <div class="app-icon app-lime"><i data-feather="users"></i></div>
+          <div class="app-name">Pengguna</div>
         </a>
       @endif
 
-      @if($appVisible(['ip_address','isp']))
-        <a href="{{ url('/apps/launch/jaringan') }}" class="app-tile" data-title="jaringan ip address isp">
-          <div class="app-icon app-cyan"><i data-feather="wifi"></i></div>
-          <div class="app-name">Jaringan</div>
-        </a>
-      @endif
-
-      @if($appVisible(['cctv']))
-        <a href="{{ url('/apps/launch/monitoring') }}" class="app-tile" data-title="cctv monitoring">
-          <div class="app-icon app-emerald"><i data-feather="video"></i></div>
-          <div class="app-name">CCTV</div>
+      @if($appVisible(['ip_address','isp','perangkat','ruangan','cctv','roles']))
+        <a href="{{ url('/apps/launch/master-data') }}" class="app-tile" data-title="master data perangkat ruangan ip address isp cctv">
+          <div class="app-icon app-teal"><i data-feather="database"></i></div>
+          <div class="app-name">Master Data</div>
         </a>
       @endif
 
       @if($isAdmin)
-        <a href="{{ url('/apps/launch/manajemen-pengguna') }}" class="app-tile" data-title="manajemen pengguna hak akses">
-          <div class="app-icon app-lime"><i data-feather="users"></i></div>
-          <div class="app-name">Pengguna</div>
-        </a>
-        <a href="{{ url('/apps/launch/integrasi') }}" class="app-tile" data-title="setting wa gateway">
+        <a href="{{ url('/apps/launch/setting') }}" class="app-tile" data-title="setting wa gateway">
           <div class="app-icon app-slate"><i data-feather="settings"></i></div>
           <div class="app-name">Setting</div>
         </a>
