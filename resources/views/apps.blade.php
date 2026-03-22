@@ -77,11 +77,13 @@
 
   .apps-grid {
     display: grid;
-    grid-template-columns: repeat(6, 140px);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 24px;
     justify-content: center;
+    justify-items: center;
     max-width: 900px;
     margin: 0 auto;
+    padding-bottom: 24px;
   }
 
   .app-tile {
@@ -143,16 +145,18 @@
   .app-red { background: linear-gradient(135deg, #f87171, #ef4444); }
 
   @media (max-width: 1100px) {
-    .apps-grid { grid-template-columns: repeat(4, 140px); }
+    .apps-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
   }
 
   @media (max-width: 860px) {
-    .apps-grid { grid-template-columns: repeat(3, 140px); }
+    .apps-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+    .app-tile { width: 130px; height: 130px; }
   }
 
   @media (max-width: 640px) {
     .apps-page { padding: 30px 14px 50px; }
-    .apps-grid { grid-template-columns: repeat(2, 140px); }
+    .apps-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    .app-tile { width: 120px; height: 120px; }
   }
 </style>
 @endpush
