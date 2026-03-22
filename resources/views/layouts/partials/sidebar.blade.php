@@ -3,15 +3,16 @@
 		@php
 			$activeAppRaw = session('active_app');
 			$activeApp = in_array($activeAppRaw, ['inventaris', 'jaringan', 'monitoring'], true) ? 'master-data' : $activeAppRaw;
-			$portalTitleMap = [
-				'helpdesk' => 'Helpdesk',
-				'master-data' => 'Master Data',
-				'persuratan' => 'Persuratan',
-				'pengaduan' => 'Pengaduan',
-				'kepegawaian' => 'Kepegawaian',
-				'manajemen-pengguna' => 'Pengguna',
-				'integrasi' => 'Setting',
-			];
+				$portalTitleMap = [
+					'helpdesk' => 'Helpdesk',
+					'master-data' => 'Master Data',
+					'persuratan' => 'Persuratan',
+					'pengaduan' => 'Pengaduan',
+					'pengajuan' => 'Pengajuan',
+					'kepegawaian' => 'Kepegawaian',
+					'manajemen-pengguna' => 'Pengguna',
+					'integrasi' => 'Setting',
+				];
 			$portalTitle = $portalTitleMap[$activeApp] ?? 'SIMTI RSUDZM';
 		@endphp
 		<a class="sidebar-brand" href="{{ url('/apps') }}">
@@ -23,6 +24,7 @@
 				$roleKey = auth()->user()->role_key ?? null;
 				$roleId = auth()->user()->role_id ?? null;
 				$isAdmin = (bool) (auth()->user()->is_admin ?? false);
+				$isProfileApp = request()->is('profile') || request()->is('profile/*');
 				$permissionMap = collect();
 				if ($roleId && !$isAdmin) {
 					$permissionMap = \App\Models\RolePermission::where('role_id', $roleId)->get()->keyBy('menu');
@@ -51,20 +53,34 @@
 						'legalitas_sip',
 						'legalitas_str',
 					],
-					'manajemen-pengguna' => ['profil', 'pengguna', 'peran_pengguna', 'hak_akses'],
+					'pengajuan' => ['pengajuan'],
+					'manajemen-pengguna' => ['pengguna', 'peran_pengguna', 'hak_akses'],
 					'integrasi' => ['wa_gateway', 'log_aktivitas'],
 				];
 				$showMenu = function (string $key) use ($activeApp, $appMenus) {
 					if (!$activeApp || !isset($appMenus[$activeApp])) {
 						return true;
 					}
-					if (in_array($key, ['dashboard', 'laporan'], true)) {
+					if (in_array($key, ['dashboard', 'laporan', 'logout'], true)) {
 						return true;
 					}
 					return in_array($key, $appMenus[$activeApp], true);
 				};
 			@endphp
-			@if ($roleKey === 'kepala_ruangan')
+			@if($isProfileApp)
+				<li class="sidebar-item {{ request()->is('dashboard') ? 'active' : '' }}">
+					<a class="sidebar-link" href="{{ url('dashboard') }}">
+						<i class="align-middle" data-feather="home"></i>
+						<span class="align-middle">Dashboard</span>
+					</a>
+				</li>
+				<li class="sidebar-item {{ request()->is('profile') ? 'active' : '' }}">
+					<a class="sidebar-link" href="{{ url('/profile') }}">
+						<i class="align-middle" data-feather="user"></i>
+						<span class="align-middle">Profil</span>
+					</a>
+				</li>
+			@elseif ($roleKey === 'kepala_ruangan')
 				<li class="sidebar-item {{ request()->is('dashboard') ? 'active' : '' }}">
 					@if($canMenu('dashboard') && $showMenu('dashboard'))
 						<a class="sidebar-link" href="{{ url('dashboard') }}">
@@ -296,6 +312,15 @@
 				@endif
 			</li>
 
+			<li class="sidebar-item {{ request()->is('pengajuan') ? 'active' : '' }}">
+				@if($canMenu('pengajuan') && $showMenu('pengajuan'))
+					<a class="sidebar-link" href="{{ url('/pengajuan') }}">
+						<i class="align-middle" data-feather="file-plus"></i>
+						<span class="align-middle">Pengajuan</span>
+					</a>
+				@endif
+			</li>
+
 
 			<li class="sidebar-item {{ request()->is('cctv') ? 'active' : '' }}">
 				@if($canMenu('cctv') && $showMenu('cctv'))
@@ -344,14 +369,6 @@
 			</li>
 
 			@if(auth()->check() && (auth()->user()->is_admin ?? false))
-				@if($showMenu('profil'))
-					<li class="sidebar-item {{ request()->is('profil') ? 'active' : '' }}">
-						<a class="sidebar-link" href="{{ url('/profil') }}">
-							<i class="align-middle" data-feather="user"></i>
-							<span class="align-middle">Profil</span>
-						</a>
-					</li>
-				@endif
 				@if($showMenu('pengguna'))
 					<li class="sidebar-item {{ request()->is('pengguna') ? 'active' : '' }}">
 						<a class="sidebar-link" href="{{ url('/pengguna') }}">
@@ -417,12 +434,14 @@
 			@endif
 
                 @auth
-                <li class="sidebar-item">
-                    <a class="sidebar-link" href="{{ url('/apps') }}">
-                        <i class="align-middle" data-feather="grid"></i>
-                        <span class="align-middle">Kembali</span>
-                    </a>
-                </li>
+					@if(!$isProfileApp || $isAdmin)
+					<li class="sidebar-item">
+						<a class="sidebar-link" href="{{ url('/apps') }}">
+							<i class="align-middle" data-feather="grid"></i>
+							<span class="align-middle">Kembali</span>
+						</a>
+					</li>
+					@endif
                 @endauth
             </ul>
 	</div>

@@ -16,7 +16,13 @@
 <body>
 	<div class="wrapper">
 		@auth
-			@include('layouts.partials.sidebar')
+			@php
+				$hideSidebar = request()->is('profile') || request()->is('profile/*');
+				$hideSidebar = $hideSidebar && !(auth()->user()->is_admin ?? false);
+			@endphp
+			@if(!$hideSidebar)
+				@include('layouts.partials.sidebar')
+			@endif
 		@endauth
 
 		<div class="main">

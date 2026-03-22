@@ -41,7 +41,7 @@
                                 <td>{{ $item->keterangan ?: '-' }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
-                                        <a href="{{ route('peran.edit', $item->id) }}" class="btn btn-sm btn-outline-secondary">
+                                        <a href="{{ route('peran.edit', peran_token_encode((string) $item->id)) }}" class="btn btn-sm btn-outline-secondary">
                                             <i data-feather="edit-2"></i> Edit
                                         </a>
                                         <form method="POST" action="{{ route('peran.destroy', $item->id) }}" class="js-delete-peran-form" data-name="{{ $item->user_name }}">

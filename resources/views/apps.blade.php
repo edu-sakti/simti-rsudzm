@@ -128,6 +128,12 @@
     font-weight: 600;
     font-size: 0.95rem;
     color: var(--apps-text);
+    min-height: 2.4em;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .app-cyan { background: linear-gradient(135deg, #22d3ee, #38bdf8); }
@@ -168,6 +174,13 @@
   $can = function (string $menu, string $action = 'read') use ($user) {
     return \App\Support\Permission::can($user, $menu, $action);
   };
+  $canAny = function (string $menu) use ($can) {
+    return $can($menu, 'read')
+      || $can($menu, 'create')
+      || $can($menu, 'update')
+      || $can($menu, 'delete');
+  };
+  $needsProfile = $user ? !\DB::table('profiles')->where('user_id', $user->id)->exists() : false;
 @endphp
 
 <div class="apps-page">
@@ -183,18 +196,23 @@
 
     <div class="apps-grid" id="appsGrid">
       @php
-        $appVisible = function (array $menus) use ($can, $isAdmin) {
+        $appVisible = function (array $menus) use ($canAny, $isAdmin) {
           if ($isAdmin) {
             return true;
           }
           foreach ($menus as $menu) {
-            if ($can($menu)) {
+            if ($canAny($menu)) {
               return true;
             }
           }
           return false;
         };
       @endphp
+
+      <a href="{{ url('/profile') }}" class="app-tile" data-title="profile profil">
+        <div class="app-icon app-sky"><i data-feather="user"></i></div>
+        <div class="app-name">Profil</div>
+      </a>
 
       @if($appVisible(['dashboard','helpdesk','laporan']))
         <a href="{{ url('/apps/launch/helpdesk') }}" class="app-tile" data-title="helpdesk tiket laporan dashboard">
@@ -218,7 +236,14 @@
         </a>
       @endif
 
-       @if($appVisible(['pengaduan_data','pengaduan_kategori']))
+      @if($appVisible(['pengajuan']))
+        <a href="{{ url('/apps/launch/pengajuan') }}" class="app-tile" data-title="pengajuan">
+          <div class="app-icon app-indigo"><i data-feather="file-plus"></i></div>
+          <div class="app-name">Pengajuan</div>
+        </a>
+      @endif
+
+      @if($appVisible(['pengaduan_data']))
         <a href="{{ url('/apps/launch/pengaduan') }}" class="app-tile" data-title="pengaduan data pengaduan kategori">
           <div class="app-icon app-amber"><i data-feather="alert-circle"></i></div>
           <div class="app-name">Pengaduan</div>
@@ -244,14 +269,15 @@
           <div class="app-icon app-slate"><i data-feather="settings"></i></div>
           <div class="app-name">Setting</div>
         </a>
-        <a href="{{ url('/auth/logout') }}" class="app-tile" data-title="keluar logout" id="appsLogoutBtn">
-          <div class="app-icon app-red"><i data-feather="log-out"></i></div>
-          <div class="app-name">Keluar</div>
-        </a>
-        <form id="apps-logout-form" method="POST" action="{{ route('logout') }}" class="d-none">
-          @csrf
-        </form>
       @endif
+
+      <a href="{{ url('/auth/logout') }}" class="app-tile" data-title="keluar logout" id="appsLogoutBtn">
+        <div class="app-icon app-red"><i data-feather="log-out"></i></div>
+        <div class="app-name">Keluar</div>
+      </a>
+      <form id="apps-logout-form" method="POST" action="{{ route('logout') }}" class="d-none">
+        @csrf
+      </form>
     </div>
   </div>
 </div>
@@ -273,6 +299,25 @@
       });
     });
   }
+
+  @if($needsProfile)
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Data Profile Anda masih kosong',
+        text: 'Segera dilengkapi.',
+        confirmButtonText: 'Lengkapi Profile',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = @json(url('/profile/tambah'));
+        }
+      });
+    } else {
+      window.location.href = @json(url('/profile/tambah'));
+    }
+  @endif
 
   const logoutBtn = document.getElementById('appsLogoutBtn');
   if (logoutBtn) {

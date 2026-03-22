@@ -11,16 +11,26 @@
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<h5 class="card-title mb-0">Data Helpdesk</h5>
 					<div class="d-flex gap-2">
-						@permission('helpdesk', 'create')
-							<a href="{{ url('/helpdesk/tambah-ticket') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
-								<i data-feather="plus"></i>
-								<span>Tambah</span>
-							</a>
-							<a href="#" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
-								<i data-feather="send"></i>
-								<span>Request</span>
-							</a>
-						@endpermission
+						@if(\App\Support\Permission::can(auth()->user(), 'helpdesk', 'create'))
+							@php
+								$roleKey = auth()->user()->role_key ?? '';
+							@endphp
+							@if(in_array($roleKey, ['petugas', 'kepala_ruang', 'kepala', 'petugas_it'], true))
+								<a href="{{ route('helpdesk.request') }}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+									<i data-feather="send"></i>
+									<span>Request</span>
+								</a>
+							@else
+								<a href="{{ url('/helpdesk/tambah-ticket') }}" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
+									<i data-feather="plus"></i>
+									<span>Tambah</span>
+								</a>
+								<a href="{{ route('helpdesk.request') }}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+									<i data-feather="send"></i>
+									<span>Request</span>
+								</a>
+							@endif
+						@endif
 					</div>
 				</div>
 				<div class="card-body">
@@ -88,11 +98,13 @@
 												<a href="{{ route('helpdesk.show.internal', $ticket->no_ticket) }}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
 													<i data-feather="info"></i> Detail
 												</a>
-												@permission('helpdesk', 'update')
+												@if(\App\Support\Permission::can(auth()->user(), 'helpdesk', 'update'))
 													<a href="#" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
 														<i data-feather="edit-2"></i> Edit
 													</a>
-													@php($userRole = auth()->user()->role_key ?? '')
+													@php
+														$userRole = auth()->user()->role_key ?? '';
+													@endphp
 													@if((auth()->user()->is_admin ?? false) || in_array($userRole, ['petugas_it'], true))
 														<a href="#" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
 															<i data-feather="play"></i> Proses
@@ -101,8 +113,8 @@
 													<a href="#" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1">
 														<i data-feather="check-circle"></i> Selesai
 													</a>
-												@endpermission
-												@permission('helpdesk', 'delete')
+												@endif
+												@if(\App\Support\Permission::can(auth()->user(), 'helpdesk', 'delete'))
 													<form method="POST" action="{{ route('helpdesk.destroy', $ticket->id) }}" class="d-inline">
 														@csrf
 														@method('DELETE')
@@ -110,7 +122,7 @@
 															<i data-feather="trash-2"></i> Hapus
 														</button>
 													</form>
-												@endpermission
+												@endif
 											</div>
 										</td>
 									</tr>
