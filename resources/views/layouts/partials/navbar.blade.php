@@ -13,23 +13,16 @@
     <div class="d-flex flex-column lh-1">
         @auth
           @php
-            $role = Auth::user()->role ?? 'petugas_it';
-            $roleLabelMap = [
-              'admin' => 'Admin',
-              'petugas_it' => 'Petugas IT',
-              'petugas_helpdesk' => 'Petugas Helpdesk',
-              'petugas' => 'Petugas IT',
-              'manajemen' => 'Manajemen',
-              'kepala_ruangan' => 'Kepala Ruangan',
-            ];
-            $roleLabel = $roleLabelMap[$role] ?? ucfirst($role);
-            if (($role === 'admin') || (Auth::user()->is_admin ?? false)) {
+            $roleKey = Auth::user()->role_key ?? 'petugas_it';
+            $roleName = Auth::user()->role->name ?? 'Petugas IT';
+            $roleLabel = $roleName;
+            if ((Auth::user()->is_admin ?? false)) {
               $roleLabel = 'Admin';
-            } elseif ($role === 'manajemen') {
+            } elseif ($roleKey === 'manajemen') {
               $jabatan = Auth::user()->jabatan_id ?: 'Tanpa Jabatan';
               $roleLabel = 'M - ' . strtoupper($jabatan);
             }
-            if ($role === 'kepala_ruangan') {
+            if ($roleKey === 'kepala_ruangan') {
               $roomName = Auth::user()->room->name ?? 'Tanpa Ruangan';
               $roleLabel = trim('KARU ' . $roomName);
             }

@@ -10,7 +10,7 @@ class EnsureAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || !(auth()->user()->is_admin ?? false) && auth()->user()->role !== 'admin') {
+        if (!auth()->check() || !(auth()->user()->is_admin ?? false)) {
             abort(403);
         }
 

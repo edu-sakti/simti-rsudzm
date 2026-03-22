@@ -160,7 +160,7 @@
 @section('content')
 @php
   $user = auth()->user();
-  $isAdmin = (bool) ($user->is_admin ?? false) || ($user->role ?? '') === 'admin';
+  $isAdmin = (bool) ($user->is_admin ?? false);
   $can = function (string $menu, string $action = 'read') use ($user) {
     return \App\Support\Permission::can($user, $menu, $action);
   };
@@ -207,8 +207,8 @@
       @endif
 
 
-      @if($appVisible(['data_pegawai','pegawai_pns','pegawai_pppk','jabatan','unit_ruangan','riwayat_pegawai','riwayat_pendidikan','riwayat_pangkat','riwayat_mutasi','riwayat_pelatihan','legalitas_sip','legalitas_str']))
-        <a href="{{ url('/apps/launch/kepegawaian') }}" class="app-tile" data-title="kepegawaian pegawai pns pppk jabatan unit ruangan riwayat pendidikan pangkat golongan mutasi pelatihan">
+      @if($appVisible(['data_pegawai','pegawai_pns','pegawai_pppk','riwayat_pegawai','riwayat_pendidikan','riwayat_pangkat','riwayat_mutasi','riwayat_pelatihan','legalitas_sip','legalitas_str']))
+        <a href="{{ url('/apps/launch/kepegawaian') }}" class="app-tile" data-title="kepegawaian pegawai pns pppk riwayat pendidikan pangkat golongan mutasi pelatihan">
           <div class="app-icon app-violet"><i data-feather="users"></i></div>
           <div class="app-name">Kepegawaian</div>
         </a>
@@ -228,8 +228,8 @@
         </a>
       @endif
 
-      @if($appVisible(['ip_address','isp','perangkat','ruangan','cctv','roles']))
-        <a href="{{ url('/apps/launch/master-data') }}" class="app-tile" data-title="master data perangkat ruangan ip address isp cctv">
+      @if($appVisible(['ip_address','isp','perangkat','ruangan','pj_ruangan','cctv','roles']))
+        <a href="{{ url('/apps/launch/master-data') }}" class="app-tile" data-title="master data perangkat ruangan pj ruangan ip address isp cctv peran">
           <div class="app-icon app-teal"><i data-feather="database"></i></div>
           <div class="app-name">Master Data</div>
         </a>

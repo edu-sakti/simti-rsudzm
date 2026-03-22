@@ -14,20 +14,20 @@ class Permission
         if (!$user) {
             return false;
         }
-        if (($user->is_admin ?? false) || $user->role === 'admin') {
+        if (($user->is_admin ?? false)) {
             return true;
         }
 
-        $role = $user->role;
-        if (in_array($role, ['petugas', 'staff'], true)) {
-            $role = 'petugas_it';
+        $roleId = $user->role_id;
+        if (!$roleId) {
+            return false;
         }
 
-        if (!isset(self::$cache[$role])) {
-            self::$cache[$role] = RolePermission::where('role', $role)->get()->keyBy('menu');
+        if (!isset(self::$cache[$roleId])) {
+            self::$cache[$roleId] = RolePermission::where('role_id', $roleId)->get()->keyBy('menu');
         }
 
-        $perm = self::$cache[$role][$menu] ?? null;
+        $perm = self::$cache[$roleId][$menu] ?? null;
         $field = 'can_' . $action;
 
         return (bool) ($perm->{$field} ?? false);

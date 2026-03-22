@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -26,10 +27,8 @@ class User extends Authenticatable
         'name',
         'username',
         'phone',
-        'role',
+        'role_id',
         'is_admin',
-        'room_id',
-        'jabatan_id',
         'password',
     ];
 
@@ -55,8 +54,22 @@ class User extends Authenticatable
         ];
     }
 
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class, 'room_id', 'id');
+    }
+
+    public function getRoleKeyAttribute(): ?string
+    {
+        $name = $this->role?->name;
+        if (!$name) {
+            return null;
+        }
+        return Str::slug($name, '_');
     }
 }

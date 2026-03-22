@@ -20,14 +20,12 @@
 
 		<ul class="sidebar-nav">
 			@php
-				$role = auth()->user()->role ?? null;
+				$roleKey = auth()->user()->role_key ?? null;
+				$roleId = auth()->user()->role_id ?? null;
 				$isAdmin = (bool) (auth()->user()->is_admin ?? false);
-				if ($role === 'admin') {
-					$isAdmin = true;
-				}
 				$permissionMap = collect();
-				if ($role && !$isAdmin) {
-					$permissionMap = \App\Models\RolePermission::where('role', $role)->get()->keyBy('menu');
+				if ($roleId && !$isAdmin) {
+					$permissionMap = \App\Models\RolePermission::where('role_id', $roleId)->get()->keyBy('menu');
 				}
 				$canMenu = function (string $key) use ($isAdmin, $permissionMap) {
 					if ($isAdmin) {
@@ -44,13 +42,12 @@
 						'data_pegawai',
 						'pegawai_pns',
 						'pegawai_pppk',
-						'jabatan',
-						'unit_ruangan',
 						'riwayat_pegawai',
 						'riwayat_pendidikan',
 						'riwayat_pangkat',
 						'riwayat_mutasi',
 						'riwayat_pelatihan',
+						'jabatan',
 						'legalitas_sip',
 						'legalitas_str',
 					],
@@ -67,7 +64,7 @@
 					return in_array($key, $appMenus[$activeApp], true);
 				};
 			@endphp
-			@if ($role === 'kepala_ruangan')
+			@if ($roleKey === 'kepala_ruangan')
 				<li class="sidebar-item {{ request()->is('dashboard') ? 'active' : '' }}">
 					@if($canMenu('dashboard') && $showMenu('dashboard'))
 						<a class="sidebar-link" href="{{ url('dashboard') }}">
@@ -164,24 +161,6 @@
 				@endif
 			</li>
 
-			<li class="sidebar-item {{ request()->is('kepegawaian/jabatan') ? 'active' : '' }}">
-				@if($canMenu('jabatan') && $showMenu('jabatan'))
-					<a class="sidebar-link" href="{{ url('/kepegawaian/jabatan') }}">
-						<i class="align-middle" data-feather="award"></i>
-						<span class="align-middle">Jabatan</span>
-					</a>
-				@endif
-			</li>
-
-			<li class="sidebar-item {{ request()->is('kepegawaian/unit-ruangan') ? 'active' : '' }}">
-				@if($canMenu('unit_ruangan') && $showMenu('unit_ruangan'))
-					<a class="sidebar-link" href="{{ url('/kepegawaian/unit-ruangan') }}">
-						<i class="align-middle" data-feather="grid"></i>
-						<span class="align-middle">Unit / Ruangan</span>
-					</a>
-				@endif
-			</li>
-
 			@php
 				$riwayatActive = request()->is('kepegawaian/riwayat')
 					|| request()->is('kepegawaian/riwayat/pendidikan')
@@ -229,6 +208,15 @@
 							@endif
 						</li>
 					</ul>
+				@endif
+			</li>
+
+			<li class="sidebar-item {{ request()->is('kepegawaian/jabatan') ? 'active' : '' }}">
+				@if($canMenu('jabatan') && $showMenu('jabatan'))
+					<a class="sidebar-link" href="{{ url('/kepegawaian/jabatan') }}">
+						<i class="align-middle" data-feather="award"></i>
+						<span class="align-middle">Jabatan Pegawai</span>
+					</a>
 				@endif
 			</li>
 
@@ -338,11 +326,19 @@
 					</a>
 				@endif
 			</li>
+			<li class="sidebar-item {{ request()->is('jabatan*') ? 'active' : '' }}">
+				@if($canMenu('jabatan') && $showMenu('jabatan'))
+					<a class="sidebar-link" href="{{ url('/jabatan') }}">
+						<i class="align-middle" data-feather="award"></i>
+						<span class="align-middle">Jabatan</span>
+					</a>
+				@endif
+			</li>
 			<li class="sidebar-item {{ request()->is('roles*') ? 'active' : '' }}">
 				@if($canMenu('roles') && $showMenu('roles'))
 					<a class="sidebar-link" href="{{ url('/roles') }}">
 						<i class="align-middle" data-feather="shield"></i>
-						<span class="align-middle">Roles</span>
+						<span class="align-middle">Peran</span>
 					</a>
 				@endif
 			</li>
@@ -428,7 +424,6 @@
                     </a>
                 </li>
                 @endauth
-
             </ul>
 	</div>
 </nav>

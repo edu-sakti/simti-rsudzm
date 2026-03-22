@@ -46,9 +46,9 @@
 
             {{-- No Telepon + OTP --}}
             <div class="col-md-6">
-              <label for="phone" class="form-label">No Telepon (format internasional)</label>
+              <label for="phone" class="form-label">No Telepon</label>
             <div class="input-group">
-              <input type="text" id="phone" name="phone" class="form-control" placeholder="contoh: 62812xxxxxxx" value="{{ old('phone') }}" required>
+              <input type="text" id="phone" name="phone" class="form-control" placeholder="contoh: 62812xxxxxxx atau 0812xxxxxxx" value="{{ old('phone') }}" required>
               @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
                 <button class="btn btn-outline-primary" type="button" id="btn-otp">OTP</button>
               @endif
@@ -84,89 +84,17 @@
               @enderror
             </div>
 
-            {{-- Role --}}
-            <div class="col-md-6">
-              <label for="role" class="form-label">Role</label>
-              <select id="role" name="role" class="form-select" required {{ isset($invite_role) ? 'disabled' : '' }}>
-                @if (!isset($invite_code))
-                  <option value="petugas_it" {{ old('role') === 'petugas_it' ? 'selected' : '' }}>Petugas IT</option>
-                  <option value="petugas_helpdesk" {{ old('role') === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
-                  <option value="manajemen" {{ old('role') === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
-                  <option value="kepala_ruangan" {{ old('role') === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
-                @else
-                  <option value="manajemen" {{ old('role', $invite_role) === 'manajemen' ? 'selected' : '' }}>Manajemen</option>
-                  <option value="kepala_ruangan" {{ old('role', $invite_role) === 'kepala_ruangan' ? 'selected' : '' }}>Kepala Ruangan</option>
-                  <option value="petugas_it" {{ old('role', $invite_role) === 'petugas_it' ? 'selected' : '' }}>Petugas IT</option>
-                  <option value="petugas_helpdesk" {{ old('role', $invite_role) === 'petugas_helpdesk' ? 'selected' : '' }}>Petugas Helpdesk</option>
-                @endif
-              </select>
-              @if(isset($invite_role))
-                <input type="hidden" name="role" value="{{ $invite_role }}">
-              @endif
-              @error('role')
-                <div class="text-danger small">{{ $message }}</div>
-              @enderror
-            </div>
-
-            {{-- Admin Access (khusus role petugas IT) --}}
+            {{-- Admin Access --}}
             @if (!isset($invite_code))
-              <div class="col-md-6" id="admin-wrapper" style="display:none;">
+              <div class="col-md-6">
                 <label class="form-label d-block">Akses Admin</label>
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin" value="1" {{ old('is_admin') ? 'checked' : '' }}>
                   <label class="form-check-label" for="is_admin">Jadikan sebagai Admin</label>
                 </div>
-                <div class="text-muted small mt-1">Jika dicentang, user ini memiliki akses admin sekaligus Petugas IT.</div>
+                <div class="text-muted small mt-1">Jika dicentang, user ini memiliki akses admin.</div>
               </div>
             @endif
-
-            {{-- Ruangan (khusus kepala ruangan) --}}
-            <div class="col-md-6" id="room-wrapper" style="display:none;">
-              <label for="room_id" class="form-label">Ruangan</label>
-              <select id="room_id" name="room_id" class="form-select">
-                <option value="">Pilih Ruangan</option>
-                @foreach($rooms as $room)
-                  <option value="{{ $room->id }}" {{ old('room_id') == $room->id ? 'selected' : '' }}>
-                    {{ $room->name }}
-                  </option>
-                @endforeach
-              </select>
-              @error('room_id')
-                <div class="text-danger small">{{ $message }}</div>
-              @enderror
-            </div>
-
-            {{-- Jabatan Manajemen (khusus role manajemen) --}}
-            <div class="col-md-6" id="manajemen-wrapper" style="display:none;">
-              <label for="jabatan_id" class="form-label">Jabatan Manajemen</label>
-              <select id="jabatan_id" name="jabatan_id" class="form-select">
-                <option value="">Pilih Jabatan</option>
-                <option value="Direktur" {{ old('jabatan_id') === 'Direktur' ? 'selected' : '' }}>DIREKTUR</option>
-                <option value="Komite" {{ old('jabatan_id') === 'Komite' ? 'selected' : '' }}>KOMITE</option>
-                <option value="Dewan Pengawas" {{ old('jabatan_id') === 'Dewan Pengawas' ? 'selected' : '' }}>DEWAN PENGAWAS</option>
-                <option value="SPI" {{ old('jabatan_id') === 'SPI' ? 'selected' : '' }}>SPI</option>
-                <option value="Wadir Administrasi Umum" {{ old('jabatan_id') === 'Wadir Administrasi Umum' ? 'selected' : '' }}>WADIR ADMINITRASI UMUM</option>
-                <option value="Kabag Keuangan dan Penyusun Program" {{ old('jabatan_id') === 'Kabag Keuangan dan Penyusun Program' ? 'selected' : '' }}>KABAG KEUANGAN DAN PENYUSUN PROGRAM</option>
-                <option value="Kasubbag Keuangan" {{ old('jabatan_id') === 'Kasubbag Keuangan' ? 'selected' : '' }}>KASUBBAG KEUANGAN</option>
-                <option value="Kasubbag Perencanaan, Evaluasi dan Pelaporan" {{ old('jabatan_id') === 'Kasubbag Perencanaan, Evaluasi dan Pelaporan' ? 'selected' : '' }}>KASUBBAG PERENCANAAN, EVALUASI DAN PELAPORAN</option>
-                <option value="Kabag Umum dan Kepegawaian" {{ old('jabatan_id') === 'Kabag Umum dan Kepegawaian' ? 'selected' : '' }}>KABAG UMUM DAN KEPEGAWAIAN</option>
-                <option value="Kasubbag Tata Usaha dan Kepegawaian" {{ old('jabatan_id') === 'Kasubbag Tata Usaha dan Kepegawaian' ? 'selected' : '' }}>KASUBBAG TATA USAHA DAN KEPEGAWAIAN</option>
-                <option value="Kasubbag Hubungan Masyarakat dan Pemasaran" {{ old('jabatan_id') === 'Kasubbag Hubungan Masyarakat dan Pemasaran' ? 'selected' : '' }}>KASUBBAG HUBUNGAN MASYARAKAT DAN PEMASARAN</option>
-                <option value="Wadir Pelayanan" {{ old('jabatan_id') === 'Wadir Pelayanan' ? 'selected' : '' }}>WADIR PELAYANAN</option>
-                <option value="Kabid Pelayanan Penunjang" {{ old('jabatan_id') === 'Kabid Pelayanan Penunjang' ? 'selected' : '' }}>KABID PELAYANAN PENUNJANG</option>
-                <option value="Kasie Kefarmasian dan Perbekalan Kesehatan" {{ old('jabatan_id') === 'Kasie Kefarmasian dan Perbekalan Kesehatan' ? 'selected' : '' }}>KASIE KEFARMASIAN DAN PERBEKALAN KESEHATAN</option>
-                <option value="Kasie Penunjang, Penelitian, Pengembangan dan Upaya Rujukan" {{ old('jabatan_id') === 'Kasie Penunjang, Penelitian, Pengembangan dan Upaya Rujukan' ? 'selected' : '' }}>KASIE  PENUJANG, PENELITIAN, PENGEMBANGAN DAN UPAYA RUJUKAN</option>
-                <option value="Kabid Pelayanan Keperawatan dan Kebidanan" {{ old('jabatan_id') === 'Kabid Pelayanan Keperawatan dan Kebidanan' ? 'selected' : '' }}>KABID PELAYANAN KEPERAWATAN DAN KEBIDANAN</option>
-                <option value="Kasie Asuhan Keperawatan dan Kebidanan" {{ old('jabatan_id') === 'Kasie Asuhan Keperawatan dan Kebidanan' ? 'selected' : '' }}>KASIE ASUHAN KEPERAWATAN DAN KEBIDANAN</option>
-                <option value="Kasie Etika Profesi, Logistik Keperawatan dan Kebidanan" {{ old('jabatan_id') === 'Kasie Etika Profesi, Logistik Keperawatan dan Kebidanan' ? 'selected' : '' }}>KASIE ETIKA PROFESI, LOGISTIK KEPERAWATAN DAN KEBIDANAN</option>
-                <option value="Kabid Pelayanan Medis dan Penunjang Medis" {{ old('jabatan_id') === 'Kabid Pelayanan Medis dan Penunjang Medis' ? 'selected' : '' }}>KABID PELAYANAN MEDIS DAN PENUNJANG MEDIS</option>
-                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Darurat, Intensif dan Bedah Sentral" {{ old('jabatan_id') === 'Kasie Pelayanan Medis dan Penunjang Medis Rawat Darurat, Intensif dan Bedah Sentral' ? 'selected' : '' }}>KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT DARURAT, INTENSIF DAN BEDAH SENTRAL</option>
-                <option value="Kasie Pelayanan Medis dan Penunjang Medis Rawat Jalan dan Rawat Inap" {{ old('jabatan_id') === 'Kasie Pelayanan Medis dan Penunjang Medis Rawat Jalan dan Rawat Inap' ? 'selected' : '' }}>KASIE PELAYANAN MEDIS DAN PENUNJANG MEDIS RAWAT JALAN DAN RAWAT INAP</option>
-              </select>
-              @error('jabatan_id')
-                <div class="text-danger small">{{ $message }}</div>
-              @enderror
-            </div>
 
             {{-- Tombol Aksi --}}
             <div class="col-12 text-end mt-4 d-flex justify-content-end gap-2">
@@ -188,36 +116,6 @@
     feather.replace();
   }
 
-  (function () {
-    const roleSelect = document.getElementById('role');
-    const roomWrapper = document.getElementById('room-wrapper');
-    const manajemenWrapper = document.getElementById('manajemen-wrapper');
-    const adminWrapper = document.getElementById('admin-wrapper');
-    const adminCheckbox = document.getElementById('is_admin');
-    const toggleExtras = () => {
-      if (roleSelect.value === 'kepala_ruangan') {
-        roomWrapper.style.display = '';
-      } else {
-        roomWrapper.style.display = 'none';
-      }
-      if (roleSelect.value === 'manajemen') {
-        manajemenWrapper.style.display = '';
-      } else {
-        manajemenWrapper.style.display = 'none';
-      }
-      if (adminWrapper) {
-        if (roleSelect.value === 'petugas_it') {
-          adminWrapper.style.display = '';
-        } else {
-          adminWrapper.style.display = 'none';
-          if (adminCheckbox) adminCheckbox.checked = false;
-        }
-      }
-    };
-    roleSelect.addEventListener('change', toggleExtras);
-    toggleExtras();
-  })();
-
   @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
   (function () {
     const btnOtp = document.getElementById('btn-otp');
@@ -225,8 +123,8 @@
     const otpHelp = document.getElementById('otp-help');
     btnOtp.addEventListener('click', async () => {
       const phone = phoneInput.value.trim();
-      if (!/^62\d{8,15}$/.test(phone)) {
-        otpHelp.textContent = 'No telepon harus format internasional (contoh: 62812xxxxxxx).';
+      if (!/^(?:62|0)8\d{7,14}$/.test(phone)) {
+        otpHelp.textContent = 'No telepon harus format 628xxx atau 08xxx.';
         otpHelp.classList.add('text-danger');
         return;
       }

@@ -92,8 +92,8 @@
 													<a href="#" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
 														<i data-feather="edit-2"></i> Edit
 													</a>
-													@php($userRole = auth()->user()->role ?? '')
-													@if(in_array($userRole, ['admin', 'petugas_it'], true))
+													@php($userRole = auth()->user()->role_key ?? '')
+													@if((auth()->user()->is_admin ?? false) || in_array($userRole, ['petugas_it'], true))
 														<a href="#" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
 															<i data-feather="play"></i> Proses
 														</a>

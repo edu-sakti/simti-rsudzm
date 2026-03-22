@@ -32,10 +32,9 @@
         <div class="col-md-4">
           <label class="form-label">Role</label>
           <select class="form-select" id="roleSelect">
-            <option value="petugas_it">Petugas IT</option>
-            <option value="petugas_helpdesk">Petugas Helpdesk</option>
-            <option value="manajemen">Manajemen</option>
-            <option value="kepala_ruangan">Kepala Ruangan</option>
+            @foreach(($roles ?? []) as $role)
+              <option value="{{ $role->id }}">{{ $role->name }}</option>
+            @endforeach
           </select>
         </div>
         <div class="col-md-4">
@@ -129,8 +128,8 @@
     }
 
     async function loadPermissions() {
-      const role = roleSelect.value;
-      const response = await fetch(`/hak-akses/permissions?role=${encodeURIComponent(role)}`);
+      const roleId = roleSelect.value;
+      const response = await fetch(`/hak-akses/permissions?role_id=${encodeURIComponent(roleId)}`);
       if (!response.ok) {
         showError('Gagal memuat hak akses.');
         return;
@@ -158,7 +157,7 @@
     if (selectAll) {
       selectAll.addEventListener('change', async function () {
         const value = selectAll.checked;
-        const role = roleSelect.value;
+        const roleId = roleSelect.value;
 
         const response = await fetch('/hak-akses/permissions/bulk', {
           method: 'POST',
@@ -166,7 +165,7 @@
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
           },
-          body: JSON.stringify({ role, value }),
+          body: JSON.stringify({ role_id: roleId, value }),
         });
         if (!response.ok) {
           showError('Gagal menyimpan hak akses.');
@@ -193,7 +192,7 @@
           const menu = row.getAttribute('data-menu');
           const action = toggle.getAttribute('data-action');
           const value = toggle.checked;
-          const role = roleSelect.value;
+          const roleId = roleSelect.value;
 
           const response = await fetch('/hak-akses/permissions', {
             method: 'POST',
@@ -201,7 +200,7 @@
               'Content-Type': 'application/json',
               'X-CSRF-TOKEN': csrfToken,
             },
-            body: JSON.stringify({ role, menu, action, value }),
+            body: JSON.stringify({ role_id: roleId, menu, action, value }),
           });
 
           if (!response.ok) {
@@ -220,14 +219,14 @@
 
     if (refreshBtn) {
       refreshBtn.addEventListener('click', async function () {
-        const role = roleSelect.value;
+        const roleId = roleSelect.value;
         const response = await fetch('/hak-akses/permissions/bulk', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
           },
-          body: JSON.stringify({ role, value: false }),
+          body: JSON.stringify({ role_id: roleId, value: false }),
         });
         if (!response.ok) {
           showError('Gagal mereset hak akses.');
@@ -239,7 +238,7 @@
 
     if (saveBtn) {
       saveBtn.addEventListener('click', async function () {
-        const role = roleSelect.value;
+        const roleId = roleSelect.value;
         const payload = {};
         rows.forEach((row) => {
           const menuKey = row.getAttribute('data-menu');
@@ -257,7 +256,7 @@
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
           },
-          body: JSON.stringify({ role, permissions: payload }),
+          body: JSON.stringify({ role_id: roleId, permissions: payload }),
         });
 
         if (!response.ok) {

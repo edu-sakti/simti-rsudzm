@@ -21,6 +21,7 @@ use App\Models\Device;
 use App\Models\DeviceSpec;
 use App\Models\HelpdeskTicket;
 use App\Models\RolePermission;
+use App\Models\Role;
 
 if (!function_exists('ticket_token_encode')) {
     function ticket_token_encode(string $value): string
@@ -39,6 +40,73 @@ if (!function_exists('ticket_token_decode')) {
             $token .= str_repeat('=', 4 - $pad);
         }
         return Crypt::decryptString($token);
+    }
+}
+
+if (!function_exists('role_maps')) {
+    function role_maps(): array
+    {
+        static $byKey = null;
+        static $byId = null;
+        if ($byKey === null || $byId === null) {
+            $byKey = [];
+            $byId = [];
+            foreach (Role::query()->get() as $role) {
+                $key = Str::slug($role->name, '_');
+                $byKey[$key] = $role->id;
+                $byId[$role->id] = $key;
+            }
+        }
+
+        return [$byKey, $byId];
+    }
+}
+
+if (!function_exists('role_id_by_key')) {
+    function role_id_by_key(string $key): ?int
+    {
+        [$byKey] = role_maps();
+        return $byKey[$key] ?? null;
+    }
+}
+
+if (!function_exists('role_key_from_id')) {
+    function role_key_from_id(?int $roleId): ?string
+    {
+        if (!$roleId) {
+            return null;
+        }
+        [, $byId] = role_maps();
+        return $byId[$roleId] ?? null;
+    }
+}
+
+if (!function_exists('normalize_id_phone')) {
+    function normalize_id_phone(?string $phone): ?string
+    {
+        if ($phone === null) {
+            return null;
+        }
+
+        $raw = preg_replace('/\D+/', '', $phone);
+        if ($raw === '') {
+            return null;
+        }
+
+        if (str_starts_with($raw, '0')) {
+            $raw = '62' . substr($raw, 1);
+        } elseif (str_starts_with($raw, '8')) {
+            $raw = '62' . $raw;
+        }
+
+        return $raw;
+    }
+}
+
+if (!function_exists('is_valid_id_phone')) {
+    function is_valid_id_phone(?string $phone): bool
+    {
+        return is_string($phone) && (bool) preg_match('/^62\d{8,15}$/', $phone);
     }
 }
 
@@ -179,7 +247,6 @@ Route::get('/apps/launch/{app}', function (Request $request, string $app) {
             ['menu' => 'pegawai_pns', 'url' => url('/kepegawaian/pns')],
             ['menu' => 'pegawai_pppk', 'url' => url('/kepegawaian/pppk')],
             ['menu' => 'jabatan', 'url' => url('/kepegawaian/jabatan')],
-            ['menu' => 'unit_ruangan', 'url' => url('/kepegawaian/unit-ruangan')],
             ['menu' => 'riwayat_pegawai', 'url' => url('/kepegawaian/riwayat')],
             ['menu' => 'riwayat_pendidikan', 'url' => url('/kepegawaian/riwayat/pendidikan')],
             ['menu' => 'riwayat_pangkat', 'url' => url('/kepegawaian/riwayat/pangkat-golongan')],
@@ -205,7 +272,7 @@ Route::get('/apps/launch/{app}', function (Request $request, string $app) {
     }
 
     $user = auth()->user();
-    $isAdmin = (bool) ($user->is_admin ?? false) || ($user->role ?? '') === 'admin';
+    $isAdmin = (bool) ($user->is_admin ?? false);
     $can = function (string $menu) use ($user) {
         return \App\Support\Permission::can($user, $menu, 'read');
     };
@@ -265,15 +332,6 @@ if (!function_exists('hakAksesMenuGroups')) {
             'Helpdesk' => [
                 ['key' => 'helpdesk', 'label' => 'Tiket', 'actions' => ['read','create','update','delete']],
             ],
-            'Master Data' => [
-                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read','create','update','delete']],
-                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'pj_ruangan', 'label' => 'PJ Ruangan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'roles', 'label' => 'Roles', 'actions' => ['read','create','update']],
-                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read','create','update','delete']],
-                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read','create','update','delete']],
-                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
-            ],
             'Persuratan' => [
                 ['key' => 'surat_masuk', 'label' => 'Surat Masuk', 'actions' => ['read','create','update','delete']],
                 ['key' => 'surat_keluar', 'label' => 'Surat Keluar', 'actions' => ['read','create','update','delete']],
@@ -283,12 +341,20 @@ if (!function_exists('hakAksesMenuGroups')) {
             'Pengaduan' => [
                 ['key' => 'pengaduan_data', 'label' => 'Pengaduan', 'actions' => ['read','create','update','delete']],
             ],
+            'Master Data' => [
+                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read','create','update','delete']],
+                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read','create','update','delete']],
+                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read','create','update','delete']],
+                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
+                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'pj_ruangan', 'label' => 'PJ Ruangan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'roles', 'label' => 'Peran', 'actions' => ['read','create','update','delete']],
+            ],
             'Kepegawaian' => [
                 ['key' => 'data_pegawai', 'label' => 'Data Pegawai', 'actions' => ['read','create','update','delete']],
                 ['key' => 'pegawai_pns', 'label' => 'PNS', 'actions' => ['read','create','update','delete']],
                 ['key' => 'pegawai_pppk', 'label' => 'PPPK', 'actions' => ['read','create','update','delete']],
-                ['key' => 'jabatan', 'label' => 'Jabatan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'unit_ruangan', 'label' => 'Unit / Ruangan', 'actions' => ['read','create','update','delete']],
+                ['key' => 'jabatan', 'label' => 'Jabatan Pegawai', 'actions' => ['read','create','update','delete']],
                 ['key' => 'riwayat_pegawai', 'label' => 'Riwayat Pegawai', 'actions' => ['read','create','update','delete']],
                 ['key' => 'riwayat_pendidikan', 'label' => 'Pendidikan', 'actions' => ['read','create','update','delete']],
                 ['key' => 'riwayat_pangkat', 'label' => 'Pangkat / Golongan', 'actions' => ['read','create','update','delete']],
@@ -300,10 +366,10 @@ if (!function_exists('hakAksesMenuGroups')) {
             'Pengguna' => [
                 ['key' => 'profil', 'label' => 'Profil', 'actions' => ['read','update']],
                 ['key' => 'pengguna', 'label' => 'Pengguna', 'actions' => ['read','create','update','delete']],
-                ['key' => 'peran_pengguna', 'label' => 'Peran', 'actions' => ['read','create','update','delete']],
+                ['key' => 'peran_pengguna', 'label' => 'Peran Pengguna', 'actions' => ['read','create','update','delete']],
                 ['key' => 'hak_akses', 'label' => 'Hak Akses', 'actions' => ['read','update']],
             ],
-            'Integrasi' => [
+            'Setting' => [
                 ['key' => 'wa_gateway', 'label' => 'WA Gateway', 'actions' => ['read','update']],
                 ['key' => 'log_aktivitas', 'label' => 'Log Aktivitas', 'actions' => ['read']],
             ],
@@ -315,7 +381,7 @@ if (!function_exists('hakAksesMenuGroups')) {
 Route::get('/pengguna', function (Request $request) {
     $search = $request->query('q');
     $users = User::query()
-        ->with('room')
+        ->with(['room', 'role'])
         ->when($search, function ($query, $search) {
             $query->where('name', 'like', "%{$search}%")
                   ->orWhere('username', 'like', "%{$search}%");
@@ -331,19 +397,241 @@ Route::get('/profil', function () {
     return view('profile.index');
 })->name('profil.index')->middleware(['auth', 'admin']);
 
-Route::get('/peran-pengguna', function () {
-    return view('peran.index');
+Route::get('/peran-pengguna', function (Request $request) {
+    $search = trim((string) $request->query('q', ''));
+
+    $peranPengguna = DB::table('users as u')
+        ->leftJoin('roles as r', 'r.id', '=', 'u.role_id')
+        ->whereNotNull('u.role_id')
+        ->select([
+            'u.id',
+            'u.id as user_id',
+            'u.role_id',
+            'r.description as keterangan',
+            'u.name as user_name',
+            'u.username as user_username',
+            'r.name as role_name',
+        ])
+        ->when($search !== '', function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('u.name', 'like', "%{$search}%")
+                    ->orWhere('u.username', 'like', "%{$search}%")
+                    ->orWhere('r.name', 'like', "%{$search}%")
+                    ->orWhere('r.description', 'like', "%{$search}%");
+            });
+        })
+        ->orderBy('u.id')
+        ->paginate(10)
+        ->withQueryString();
+
+    return view('peran.index', compact('peranPengguna', 'search'));
 })->name('peran.index')->middleware(['auth', 'admin']);
 
-Route::get('/pengguna/tambah-link', function (Request $request) {
-    $role = $request->query('role');
-    if ($role && !in_array($role, ['manajemen','kepala_ruangan','petugas_it','petugas_helpdesk'], true)) {
-        abort(400);
+Route::get('/peran/create', function () {
+    $users = DB::table('users')
+        ->select('id', 'name', 'username')
+        ->whereNull('role_id')
+        ->orderBy('name')
+        ->get();
+
+    if ($users->isEmpty()) {
+        return redirect()
+            ->route('peran.index')
+            ->withErrors(['user_id' => 'Semua pengguna sudah memiliki peran. Silakan ubah lewat menu Edit.']);
     }
+
+    $roles = DB::table('roles')
+        ->select('id', 'name')
+        ->orderBy('name')
+        ->get();
+
+    $rooms = DB::table('rooms')
+        ->select('id', 'name', 'room_id')
+        ->orderBy('name')
+        ->get();
+
+    return view('peran.create', compact('users', 'roles', 'rooms'));
+})->name('peran.create')->middleware(['auth', 'admin']);
+
+Route::post('/peran', function (Request $request) {
+    $data = $request->validate([
+        'user_id' => ['required', 'integer', 'exists:users,id'],
+        'role_id' => ['required', 'integer', 'exists:roles,id'],
+    ]);
+
+    $existingUser = DB::table('users')
+        ->select('id', 'role_id')
+        ->where('id', $data['user_id'])
+        ->first();
+
+    if (!$existingUser) {
+        return back()->withErrors(['user_id' => 'Pengguna tidak ditemukan.'])->withInput();
+    }
+
+    if (!is_null($existingUser->role_id)) {
+        return redirect()
+            ->route('peran.edit', $existingUser->id)
+            ->withErrors(['user_id' => 'Pengguna sudah memiliki peran. Silakan ubah pada form edit.']);
+    }
+
+    $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')));
+    $needsRoom = in_array($roleName, ['kepala', 'kepala ruang', 'petugas'], true);
+    if ($needsRoom) {
+        $request->validate([
+            'room_id' => ['required', 'integer', 'exists:rooms,id'],
+        ]);
+    }
+
+    $updated = DB::table('users')
+        ->where('id', $data['user_id'])
+        ->update([
+            'role_id' => $data['role_id'],
+            'updated_at' => now(),
+        ]);
+
+    if (!$updated) {
+        return back()
+            ->withErrors(['user_id' => 'Pengguna sudah memiliki peran. Silakan gunakan menu Edit.'])
+            ->withInput();
+    }
+
+    if ($needsRoom) {
+        $roomId = (int) $request->input('room_id');
+        if (in_array($roleName, ['kepala', 'kepala ruang'], true)) {
+            DB::table('room_petugas')
+                ->where('room_id', $roomId)
+                ->where('is_kepala', true)
+                ->update(['is_kepala' => false]);
+        }
+
+        DB::table('room_petugas')->where('user_id', $data['user_id'])->delete();
+
+        DB::table('room_petugas')->insert([
+            'user_id' => $data['user_id'],
+            'room_id' => $roomId,
+            'is_kepala' => in_array($roleName, ['kepala', 'kepala ruang'], true),
+        ]);
+    } else {
+        DB::table('room_petugas')->where('user_id', $data['user_id'])->delete();
+    }
+
+    return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil ditambahkan.');
+})->name('peran.store')->middleware(['auth', 'admin']);
+
+Route::get('/peran/{id}/edit', function (string $id) {
+    $peran = DB::table('users as u')
+        ->leftJoin('roles as r', 'r.id', '=', 'u.role_id')
+        ->where('u.id', $id)
+        ->select([
+            'u.id',
+            'u.id as user_id',
+            'u.role_id',
+            'r.description as keterangan',
+        ])
+        ->first();
+
+    if (!$peran) {
+        abort(404);
+    }
+
+    $users = DB::table('users')
+        ->select('id', 'name', 'username')
+        ->orderBy('name')
+        ->get();
+
+    $roles = DB::table('roles')
+        ->select('id', 'name')
+        ->orderBy('name')
+        ->get();
+
+    $rooms = DB::table('rooms')
+        ->select('id', 'name', 'room_id')
+        ->orderBy('name')
+        ->get();
+    $selectedRoomId = DB::table('room_petugas')
+        ->where('user_id', $peran->user_id)
+        ->where('is_kepala', true)
+        ->value('room_id');
+
+    return view('peran.edit', compact('peran', 'users', 'roles', 'rooms', 'selectedRoomId'));
+})->name('peran.edit')->middleware(['auth', 'admin']);
+
+Route::put('/peran/{id}', function (Request $request, string $id) {
+    $data = $request->validate([
+        'user_id' => ['required', 'integer', Rule::in([(int) $id])],
+        'role_id' => ['required', 'integer', 'exists:roles,id'],
+    ], [
+        'user_id.in' => 'Pengguna pada data ini tidak bisa diubah. Silakan edit peran pengguna yang sesuai.',
+    ]);
+
+    $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')));
+    $needsRoom = in_array($roleName, ['kepala', 'kepala ruang', 'petugas'], true);
+    if ($needsRoom) {
+        $request->validate([
+            'room_id' => ['required', 'integer', 'exists:rooms,id'],
+        ]);
+    }
+
+    DB::table('users')
+        ->where('id', $id)
+        ->update([
+            'role_id' => $data['role_id'],
+            'updated_at' => now(),
+        ]);
+
+    if ($needsRoom) {
+        $roomId = (int) $request->input('room_id');
+        if (in_array($roleName, ['kepala', 'kepala ruang'], true)) {
+            DB::table('room_petugas')
+                ->where('room_id', $roomId)
+                ->where('is_kepala', true)
+                ->update(['is_kepala' => false]);
+        }
+
+        DB::table('room_petugas')->where('user_id', $id)->delete();
+
+        DB::table('room_petugas')->insert([
+            'user_id' => (int) $id,
+            'room_id' => $roomId,
+            'is_kepala' => in_array($roleName, ['kepala', 'kepala ruang'], true),
+        ]);
+    } else {
+        DB::table('room_petugas')->where('user_id', $id)->delete();
+    }
+
+    return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil diperbarui.');
+})->name('peran.update')->middleware(['auth', 'admin']);
+
+Route::delete('/peran/{id}', function (string $id) {
+    $user = DB::table('users')
+        ->select('id', 'role_id')
+        ->where('id', $id)
+        ->first();
+
+    if (!$user) {
+        return redirect()->route('peran.index')->withErrors(['user_id' => 'Data pengguna tidak ditemukan.']);
+    }
+
+    if (is_null($user->role_id)) {
+        return redirect()->route('peran.index')->withErrors(['user_id' => 'Pengguna belum memiliki peran.']);
+    }
+
+    DB::table('users')
+        ->where('id', $id)
+        ->update([
+            'role_id' => null,
+            'updated_at' => now(),
+        ]);
+
+    DB::table('room_petugas')->where('user_id', $id)->delete();
+
+    return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil dihapus.');
+})->name('peran.destroy')->middleware(['auth', 'admin']);
+
+Route::get('/pengguna/tambah-link', function (Request $request) {
     $code = bin2hex(random_bytes(16));
     Cache::put('user_invite_' . $code, [
         'valid' => true,
-        'role' => $role,
     ], now()->addMinutes(15));
     $link = url('/pengguna/tambah/' . $code);
     if (request()->expectsJson()) {
@@ -351,6 +639,57 @@ Route::get('/pengguna/tambah-link', function (Request $request) {
     }
     return redirect()->to($link);
 })->name('users.invite')->middleware(['auth', 'admin']);
+
+Route::post('/pengguna/tambah-link/kirim', function (Request $request) {
+    $data = $request->validate([
+        'phone' => ['required', 'string'],
+    ]);
+
+    $rawPhone = normalize_id_phone($data['phone'] ?? null);
+    if (!is_valid_id_phone($rawPhone)) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'No HP tidak valid. Gunakan format 62xxxxxxxxxx atau 08xxxxxxxxxx.',
+        ], 422);
+    }
+
+    $code = bin2hex(random_bytes(16));
+    Cache::put('user_invite_' . $code, [
+        'valid' => true,
+    ], now()->addMinutes(15));
+
+    $link = url('/pengguna/tambah/' . $code);
+    $message = "Silakan isi form pendaftaran pengguna baru melalui tautan berikut:\n{$link}";
+
+    $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
+    try {
+        $response = Http::withHeaders([
+            'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+        ])->post($baseUrl . '/send', [
+            'phone' => $rawPhone,
+            'message' => $message,
+        ]);
+
+        if (!$response->successful()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Gagal mengirim link ke WhatsApp.',
+            ], 500);
+        }
+    } catch (\Throwable $e) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'Gateway WhatsApp belum berjalan.',
+        ], 500);
+    }
+
+    return response()->json([
+        'ok' => true,
+        'message' => 'Link form berhasil dikirim ke WhatsApp.',
+        'link' => $link,
+        'phone' => $rawPhone,
+    ]);
+})->name('users.invite.send')->middleware(['auth', 'admin']);
 
 Route::get('/pengguna/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
@@ -366,7 +705,6 @@ Route::get('/pengguna/tambah/{token}', function (string $token) {
     return view('users.create', [
         'rooms' => $rooms,
         'invite_code' => $token,
-        'invite_role' => $invite['role'] ?? null,
     ]);
 })->name('users.create.invite');
 
@@ -375,11 +713,14 @@ Route::post('/pengguna/otp', function (Request $request) {
         return response()->json(['message' => 'OTP sedang dinonaktifkan.'], 400);
     }
     $data = $request->validate([
-        'phone' => ['required', 'regex:/^62\d{8,15}$/'],
+        'phone' => ['required', 'string'],
         'invite_code' => ['nullable', 'string'],
-    ], [
-        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
     ]);
+
+    $normalizedPhone = normalize_id_phone($data['phone'] ?? null);
+    if (!is_valid_id_phone($normalizedPhone)) {
+        return response()->json(['message' => 'No telepon harus format 628xxx atau 08xxx.'], 422);
+    }
     if (!Auth::check()) {
         $invite = !empty($data['invite_code']) ? Cache::get('user_invite_' . $data['invite_code']) : null;
         if (!$invite || empty($invite['valid'])) {
@@ -397,7 +738,7 @@ Route::post('/pengguna/otp', function (Request $request) {
         $response = Http::withHeaders([
             'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
         ])->post($baseUrl . '/send', [
-            'phone' => $data['phone'],
+            'phone' => $normalizedPhone,
             'message' => $message,
         ]);
         if (!$response->successful()) {
@@ -409,7 +750,7 @@ Route::post('/pengguna/otp', function (Request $request) {
 
     $request->session()->put([
         'otp_code' => $code,
-        'otp_phone' => $data['phone'],
+        'otp_phone' => $normalizedPhone,
         'otp_expires' => now()->addMinutes($expireMinutes)->timestamp,
     ]);
 
@@ -421,18 +762,21 @@ Route::post('/pengguna', function (Request $request) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan,petugas,staff,admin'],
         'is_admin' => ['nullable', 'boolean'],
-        'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
-        'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
-        'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
+        'phone' => ['required', 'string'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
     ], [
-        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
-        'phone.unique' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin',
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
+
+    $data['phone'] = normalize_id_phone($data['phone'] ?? null);
+    if (!is_valid_id_phone($data['phone'])) {
+        return back()->withErrors(['phone' => 'No telepon harus format 628xxx atau 08xxx.'])->withInput();
+    }
+    if (User::where('phone', $data['phone'])->exists()) {
+        return back()->withErrors(['phone' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin'])->withInput();
+    }
 
     if ($otpEnabled) {
         $sessionCode = $request->session()->get('otp_code');
@@ -453,37 +797,7 @@ Route::post('/pengguna', function (Request $request) {
         }
     }
 
-    $wasAdminRole = $data['role'] === 'admin';
-    if (in_array($data['role'], ['staff', 'petugas', 'admin'], true)) {
-        $data['role'] = 'petugas_it';
-    }
     $data['is_admin'] = filter_var($data['is_admin'] ?? false, FILTER_VALIDATE_BOOLEAN);
-    if ($wasAdminRole) {
-        $data['is_admin'] = true;
-    }
-    if ($data['is_admin']) {
-        $data['role'] = 'petugas_it';
-    }
-    $wasAdminUser = ($user->is_admin ?? false) || ($user->role === 'admin');
-    $willBeAdmin = $data['is_admin'];
-    if ($wasAdminUser && !$willBeAdmin && auth()->check() && auth()->user()->username === $user->username) {
-        return back()->withInput()->with('error', 'Tidak bisa menonaktifkan admin pada akun yang sedang login.');
-    }
-    if ($wasAdminUser && !$willBeAdmin) {
-        $adminCount = User::where(function ($q) {
-            $q->where('is_admin', true)->orWhere('role', 'admin');
-        })->count();
-        if ($adminCount <= 1) {
-            return back()->withInput()->with('error', 'Tidak bisa menonaktifkan admin terakhir.');
-        }
-    }
-    if ($data['role'] !== 'kepala_ruangan') {
-        $data['room_id'] = null;
-    }
-    if ($data['role'] !== 'manajemen') {
-        $data['jabatan_id'] = null;
-    }
-
     unset($data['otp_code']);
     $data['is_verified'] = false;
     $user = new User($data);
@@ -512,27 +826,25 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     if (!$invite || empty($invite['valid'])) {
         abort(403);
     }
-    $inviteRole = $invite['role'] ?? null;
     $request->merge(['invite_code' => $kode]);
     $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
-        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan,petugas,staff,admin'],
-        'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
-        'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
-        'phone' => ['required', 'regex:/^62\d{8,15}$/', 'unique:users,phone'],
+        'phone' => ['required', 'string'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
         'invite_code' => ['required', 'string'],
     ], [
-        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
-        'phone.unique' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin',
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
-    if ($inviteRole && $data['role'] !== $inviteRole) {
-        return back()->withErrors(['role' => 'Role tidak sesuai dengan link undangan.'])->withInput();
+    $data['phone'] = normalize_id_phone($data['phone'] ?? null);
+    if (!is_valid_id_phone($data['phone'])) {
+        return back()->withErrors(['phone' => 'No telepon harus format 628xxx atau 08xxx.'])->withInput();
+    }
+    if (User::where('phone', $data['phone'])->exists()) {
+        return back()->withErrors(['phone' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin'])->withInput();
     }
 
     if ($otpEnabled) {
@@ -554,21 +866,8 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         }
     }
 
-    $wasAdminRole = $data['role'] === 'admin';
-    if (in_array($data['role'], ['staff', 'petugas', 'admin'], true)) {
-        $data['role'] = 'petugas_it';
-    }
+    $data['role_id'] = null;
     $data['is_admin'] = false;
-    if ($wasAdminRole) {
-        $data['is_admin'] = true;
-    }
-    if ($data['role'] !== 'kepala_ruangan') {
-        $data['room_id'] = null;
-    }
-    if ($data['role'] !== 'manajemen') {
-        $data['jabatan_id'] = null;
-    }
-
     unset($data['otp_code'], $data['invite_code']);
     $data['is_verified'] = false;
     $user = new User($data);
@@ -614,40 +913,40 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
-        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan,petugas,staff,admin'],
         'is_admin' => ['nullable', 'boolean'],
-        'room_id' => ['nullable', 'integer', Rule::requiredIf(fn() => $request->input('role') === 'kepala_ruangan'), 'exists:rooms,id'],
-        'jabatan_id' => ['nullable', 'string', Rule::requiredIf(fn() => $request->input('role') === 'manajemen')],
-        'phone' => ['required', 'regex:/^62\d{8,15}$/', Rule::unique('users', 'phone')->ignore($user->username, 'username')],
+        'phone' => ['required', 'string'],
         'otp_code' => $otpEnabled ? ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['nullable', 'string', 'min:8'],
     ], [
-        'phone.regex' => 'No telepon harus format internasional (contoh: 62812xxxxxxx).',
-        'phone.unique' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin',
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
+
+    $data['phone'] = normalize_id_phone($data['phone'] ?? null);
+    if (!is_valid_id_phone($data['phone'])) {
+        return back()->withErrors(['phone' => 'No telepon harus format 628xxx atau 08xxx.'])->withInput();
+    }
+    $phoneExists = User::where('phone', $data['phone'])
+        ->where('username', '!=', $user->username)
+        ->exists();
+    if ($phoneExists) {
+        return back()->withErrors(['phone' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin'])->withInput();
+    }
 
     if (empty($data['password'])) {
         unset($data['password']);
     }
-    $wasAdminRole = $data['role'] === 'admin';
-    if (in_array($data['role'], ['staff', 'petugas', 'admin'], true)) {
-        $data['role'] = 'petugas_it';
-    }
     $data['is_admin'] = filter_var($data['is_admin'] ?? false, FILTER_VALIDATE_BOOLEAN);
-    if ($wasAdminRole) {
-        $data['is_admin'] = true;
+    $wasAdminUser = (bool) ($user->is_admin ?? false);
+    $willBeAdmin = $data['is_admin'];
+    if ($wasAdminUser && !$willBeAdmin && auth()->check() && auth()->user()->username === $user->username) {
+        return back()->withInput()->with('error', 'Tidak bisa menonaktifkan admin pada akun yang sedang login.');
     }
-    if ($data['is_admin']) {
-        $data['role'] = 'petugas_it';
+    if ($wasAdminUser && !$willBeAdmin) {
+        $adminCount = User::where('is_admin', true)->count();
+        if ($adminCount <= 1) {
+            return back()->withInput()->with('error', 'Tidak bisa menonaktifkan admin terakhir.');
+        }
     }
-    if ($data['role'] !== 'kepala_ruangan') {
-        $data['room_id'] = null;
-    }
-    if ($data['role'] !== 'manajemen') {
-        $data['jabatan_id'] = null;
-    }
-
     $phoneChanged = isset($data['phone']) && $data['phone'] !== $user->phone;
     if ($phoneChanged && $otpEnabled) {
         $sessionCode = $request->session()->get('otp_code');
@@ -743,7 +1042,77 @@ Route::get('/pj-ruangan', function () {
     return view('pj-ruangan.index');
 })->name('rooms.pj')->middleware(['auth', 'permission:pj_ruangan,read']);
 
-// ---------------- Roles (Master Data) ----------------
+// ---------------- Jabatan (Master Data) ----------------
+Route::get('/jabatan', function (Request $request) {
+    $search = $request->query('q');
+    $jabatans = DB::table('jabatans')
+        ->when($search, function ($query, $search) {
+            $query->where('name', 'like', "%{$search}%");
+        })
+        ->orderBy('name')
+        ->paginate(20)
+        ->withQueryString();
+
+    return view('jabatan.index', compact('jabatans', 'search'));
+})->name('jabatan.index')->middleware(['auth', 'permission:jabatan,read']);
+
+Route::get('/jabatan/create', function () {
+    return view('jabatan.create');
+})->name('jabatan.create')->middleware(['auth', 'permission:jabatan,create']);
+
+Route::post('/jabatan', function (Request $request) {
+    $data = $request->validate([
+        'name' => ['required', 'string', 'max:150', 'unique:jabatans,name'],
+        'description' => ['nullable', 'string'],
+    ]);
+
+    DB::table('jabatans')->insert([
+        'name' => $data['name'],
+        'description' => $data['description'] ?? null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return redirect()->route('jabatan.index')->with('success', 'Jabatan berhasil ditambahkan.');
+})->name('jabatan.store')->middleware(['auth', 'permission:jabatan,create']);
+
+Route::get('/jabatan/{id}/edit', function (string $id) {
+    $jabatan = DB::table('jabatans')->where('id', $id)->first();
+    if (!$jabatan) {
+        abort(404);
+    }
+    return view('jabatan.edit', compact('jabatan'));
+})->name('jabatan.edit')->middleware(['auth', 'permission:jabatan,update']);
+
+Route::put('/jabatan/{id}', function (Request $request, string $id) {
+    $jabatan = DB::table('jabatans')->where('id', $id)->first();
+    if (!$jabatan) {
+        abort(404);
+    }
+    $data = $request->validate([
+        'name' => ['required', 'string', 'max:150', Rule::unique('jabatans', 'name')->ignore($id)],
+        'description' => ['nullable', 'string'],
+    ]);
+
+    DB::table('jabatans')->where('id', $id)->update([
+        'name' => $data['name'],
+        'description' => $data['description'] ?? null,
+        'updated_at' => now(),
+    ]);
+
+    return redirect()->route('jabatan.index')->with('success', 'Jabatan berhasil diperbarui.');
+})->name('jabatan.update')->middleware(['auth', 'permission:jabatan,update']);
+
+Route::delete('/jabatan/{id}', function (string $id) {
+    $jabatan = DB::table('jabatans')->where('id', $id)->first();
+    if (!$jabatan) {
+        abort(404);
+    }
+    DB::table('jabatans')->where('id', $id)->delete();
+    return redirect()->route('jabatan.index')->with('success', 'Jabatan berhasil dihapus.');
+})->name('jabatan.destroy')->middleware(['auth', 'permission:jabatan,delete']);
+
+// ---------------- Peran (Master Data) ----------------
 Route::get('/roles', function (Request $request) {
     $search = $request->query('q');
     $roles = DB::table('roles')
@@ -765,6 +1134,9 @@ Route::post('/roles', function (Request $request) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:100', 'unique:roles,name'],
         'description' => ['nullable', 'string'],
+    ], [
+        'name.required' => 'Nama role wajib diisi.',
+        'name.unique' => 'Nama role sudah ada, gunakan nama lain.',
     ]);
 
     DB::table('roles')->insert([
@@ -774,7 +1146,7 @@ Route::post('/roles', function (Request $request) {
         'updated_at' => now(),
     ]);
 
-    return redirect()->route('roles.index')->with('success', 'Role berhasil ditambahkan.');
+    return redirect()->route('roles.index')->with('success', 'Peran berhasil ditambahkan.');
 })->name('roles.store')->middleware(['auth', 'permission:roles,create']);
 
 Route::get('/roles/{id}/edit', function (string $id) {
@@ -793,6 +1165,9 @@ Route::put('/roles/{id}', function (Request $request, string $id) {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($id)],
         'description' => ['nullable', 'string'],
+    ], [
+        'name.required' => 'Nama role wajib diisi.',
+        'name.unique' => 'Nama role sudah ada, gunakan nama lain.',
     ]);
 
     DB::table('roles')->where('id', $id)->update([
@@ -801,7 +1176,7 @@ Route::put('/roles/{id}', function (Request $request, string $id) {
         'updated_at' => now(),
     ]);
 
-    return redirect()->route('roles.index')->with('success', 'Role berhasil diperbarui.');
+    return redirect()->route('roles.index')->with('success', 'Peran berhasil diperbarui.');
 })->name('roles.update')->middleware(['auth', 'permission:roles,update']);
 
 Route::delete('/roles/{id}', function (string $id) {
@@ -810,7 +1185,7 @@ Route::delete('/roles/{id}', function (string $id) {
         abort(404);
     }
     DB::table('roles')->where('id', $id)->delete();
-    return redirect()->route('roles.index')->with('success', 'Role berhasil dihapus.');
+    return redirect()->route('roles.index')->with('success', 'Peran berhasil dihapus.');
 })->name('roles.destroy')->middleware(['auth', 'permission:roles,delete']);
 
 Route::get('/ruangan/tambah', function () use ($roomCategories) {
@@ -889,17 +1264,18 @@ Route::delete('/ruangan/{encoded}', function (string $encoded) {
 // ---------------- Hak Akses ----------------
 Route::get('/hak-akses', function () {
     $menuGroups = hakAksesMenuGroups();
-    return view('hak-akses.index', compact('menuGroups'));
+    $roles = Role::orderBy('id')->get();
+    return view('hak-akses.index', compact('menuGroups', 'roles'));
 })->name('hakakses.index')->middleware(['auth', 'admin']);
 
 Route::get('/hak-akses/permissions', function (Request $request) {
     $data = $request->validate([
-        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'role_id' => ['required', 'integer', 'exists:roles,id'],
     ]);
 
     $menuGroups = hakAksesMenuGroups();
     $menus = collect($menuGroups)->flatten(1)->pluck('key')->values();
-    $existing = RolePermission::where('role', $data['role'])->get()->keyBy('menu');
+    $existing = RolePermission::where('role_id', $data['role_id'])->get()->keyBy('menu');
 
     $permissions = [];
     foreach ($menus as $menu) {
@@ -917,12 +1293,11 @@ Route::get('/hak-akses/permissions', function (Request $request) {
 
 Route::post('/hak-akses/permissions', function (Request $request) {
     $data = $request->validate([
-        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'role_id' => ['required', 'integer', 'exists:roles,id'],
         'menu' => ['required', 'string'],
         'action' => ['required', 'in:read,create,update,delete'],
         'value' => ['required', 'boolean'],
     ]);
-
     $menuGroups = hakAksesMenuGroups();
     $menuKeys = collect($menuGroups)->flatten(1)->pluck('key')->values()->all();
     if (!in_array($data['menu'], $menuKeys, true)) {
@@ -930,7 +1305,7 @@ Route::post('/hak-akses/permissions', function (Request $request) {
     }
 
     $permission = RolePermission::firstOrNew([
-        'role' => $data['role'],
+        'role_id' => $data['role_id'],
         'menu' => $data['menu'],
     ]);
 
@@ -943,16 +1318,15 @@ Route::post('/hak-akses/permissions', function (Request $request) {
 
 Route::post('/hak-akses/permissions/bulk', function (Request $request) {
     $data = $request->validate([
-        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'role_id' => ['required', 'integer', 'exists:roles,id'],
         'value' => ['required', 'boolean'],
     ]);
-
     $menuGroups = hakAksesMenuGroups();
     foreach ($menuGroups as $menus) {
         foreach ($menus as $menu) {
             $actions = $menu['actions'] ?? [];
             RolePermission::updateOrCreate(
-                ['role' => $data['role'], 'menu' => $menu['key']],
+                ['role_id' => $data['role_id'], 'menu' => $menu['key']],
                 [
                     'can_read' => in_array('read', $actions, true) ? (bool) $data['value'] : false,
                     'can_create' => in_array('create', $actions, true) ? (bool) $data['value'] : false,
@@ -968,10 +1342,9 @@ Route::post('/hak-akses/permissions/bulk', function (Request $request) {
 
 Route::post('/hak-akses/permissions/save', function (Request $request) {
     $data = $request->validate([
-        'role' => ['required', 'in:petugas_it,petugas_helpdesk,manajemen,kepala_ruangan'],
+        'role_id' => ['required', 'integer', 'exists:roles,id'],
         'permissions' => ['required', 'array'],
     ]);
-
     $menuGroups = hakAksesMenuGroups();
     foreach ($menuGroups as $menus) {
         foreach ($menus as $menu) {
@@ -979,7 +1352,7 @@ Route::post('/hak-akses/permissions/save', function (Request $request) {
             $actions = $menu['actions'] ?? [];
 
             RolePermission::updateOrCreate(
-                ['role' => $data['role'], 'menu' => $menu['key']],
+                ['role_id' => $data['role_id'], 'menu' => $menu['key']],
                 [
                     'can_read' => in_array('read', $actions, true) ? (bool) ($payload['read'] ?? false) : false,
                     'can_create' => in_array('create', $actions, true) ? (bool) ($payload['create'] ?? false) : false,
@@ -1223,9 +1596,10 @@ Route::get('/helpdesk/tambah-ticket', function () {
         ->select('id', 'name', 'room_id')
         ->orderBy('name')
         ->get();
+    $petugasItId = role_id_by_key('petugas_it');
     $petugas = \App\Models\User::query()
         ->select('id', 'name')
-        ->where('role', 'petugas_it')
+        ->when($petugasItId, fn ($q) => $q->where('role_id', $petugasItId))
         ->orderBy('name')
         ->get();
 
@@ -1316,9 +1690,10 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
     ]);
 
     if (!empty($validated['petugas_id'])) {
+        $petugasItId = role_id_by_key('petugas_it');
         $petugas = User::select('id', 'phone')
             ->where('id', $validated['petugas_id'])
-            ->where('role', 'petugas_it')
+            ->when($petugasItId, fn ($q) => $q->where('role_id', $petugasItId))
             ->first();
         if ($petugas && !empty($petugas->phone)) {
             $phone = preg_replace('/\D+/', '', $petugas->phone);
@@ -1379,7 +1754,8 @@ Route::delete('/helpdesk/{ticket}', function (HelpdeskTicket $ticket) {
 
 Route::get('/detail-ticket/{no_ticket}', function (string $noTicket) {
     $user = auth()->user();
-    if ($user && !in_array($user->role, ['petugas_helpdesk'], true) && !($user->is_admin ?? false) && $user->role !== 'admin') {
+    $roleKey = $user?->role_key;
+    if ($user && !in_array($roleKey, ['petugas_helpdesk'], true) && !($user->is_admin ?? false)) {
         abort(403);
     }
     $ticket = DB::table('helpdesk_tickets')
@@ -1405,7 +1781,7 @@ Route::get('/detail-ticket/{no_ticket}', function (string $noTicket) {
 })->name('helpdesk.show.internal')->middleware(['auth', 'permission:helpdesk,read']);
 
 Route::get('/helpdesk/detail-ticket/{token}', function (string $token) {
-    if (auth()->check() && !in_array(auth()->user()->role, ['petugas_it'], true) && !(auth()->user()->is_admin ?? false) && auth()->user()->role !== 'admin') {
+    if (auth()->check() && !in_array(auth()->user()->role_key, ['petugas_it'], true) && !(auth()->user()->is_admin ?? false)) {
         abort(403);
     }
 
@@ -1980,11 +2356,9 @@ Route::post('/forget-password', function (Request $request) {
         'phone' => ['required', 'string'],
     ]);
 
-    $raw = preg_replace('/\D+/', '', $data['phone']);
-    if (str_starts_with($raw, '0')) {
-        $raw = '62' . substr($raw, 1);
-    } elseif (str_starts_with($raw, '8')) {
-        $raw = '62' . $raw;
+    $raw = normalize_id_phone($data['phone'] ?? null);
+    if (!is_valid_id_phone($raw)) {
+        return back()->withInput()->with('error', 'Format No HP tidak valid. Gunakan 628xxx atau 08xxx.');
     }
 
     $user = User::where('phone', $raw)->first();
@@ -1994,7 +2368,7 @@ Route::post('/forget-password', function (Request $request) {
 
     $token = Str::random(64);
     $user->reset_token = $token;
-    $user->reset_token_expires = now()->addHours(1);
+    $user->reset_token_expired_at = now()->addHours(1);
     $user->save();
     $link = url('/change-password/' . $token);
     $message = "Ganti password Anda melalui link berikut:\n{$link}\n\nAbaikan pesan ini jika Anda tidak meminta perubahan password.";
@@ -2019,7 +2393,7 @@ Route::post('/forget-password', function (Request $request) {
 
 Route::get('/change-password/{token}', function (string $token) {
     $user = User::where('reset_token', $token)
-        ->where('reset_token_expires', '>=', now())
+        ->where('reset_token_expired_at', '>=', now())
         ->first();
     if (!$user) {
         abort(404);
@@ -2029,7 +2403,7 @@ Route::get('/change-password/{token}', function (string $token) {
 
 Route::post('/change-password/{token}', function (Request $request, string $token) {
     $user = User::where('reset_token', $token)
-        ->where('reset_token_expires', '>=', now())
+        ->where('reset_token_expired_at', '>=', now())
         ->first();
     if (!$user) {
         abort(404);
@@ -2047,7 +2421,7 @@ Route::post('/change-password/{token}', function (Request $request, string $toke
 
     $user->password = Hash::make($data['password']);
     $user->reset_token = null;
-    $user->reset_token_expires = null;
+    $user->reset_token_expired_at = null;
     $user->save();
 
     return redirect('/auth/login')

@@ -24,7 +24,7 @@
                     <thead>
                         <tr>
                             <th style="width: 60px;">No</th>
-                            <th>Nama</th>
+                            <th>Petugas</th>
                             <th>Ruangan</th>
                             <th>Keterangan</th>
                             <th style="width: 160px;">Aksi</th>

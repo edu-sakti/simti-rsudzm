@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Role')
+@section('title', 'Edit Peran')
 
 @section('content')
 <div class="container-fluid p-0">
-    <h1 class="h3 mb-3">Edit Role</h1>
+    <h1 class="h3 mb-3">Edit Peran</h1>
 
     <div class="card">
         <div class="card-body">
@@ -12,8 +12,8 @@
                 @csrf
                 @method('PUT')
                 <div class="mb-3">
-                    <label class="form-label">Nama Role</label>
-                    <input type="text" name="name" class="form-control" maxlength="100" required value="{{ old('name', $role->name) }}">
+                    <label class="form-label">Nama Peran</label>
+                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" maxlength="100" required value="{{ old('name', $role->name) }}">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Deskripsi</label>
@@ -28,3 +28,17 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+  @if ($errors->has('name'))
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal',
+        text: {!! json_encode($errors->first('name')) !!}
+      });
+    }
+  @endif
+</script>
+@endpush

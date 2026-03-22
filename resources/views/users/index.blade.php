@@ -16,18 +16,10 @@
             <i data-feather="user-plus"></i>
             <span>Tambah</span>
           </a>
-          <div class="btn-group">
-            <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle d-inline-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false">
-              <i data-feather="link"></i>
-              <span>Generate Form</span>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item js-generate-invite" href="#" data-role="manajemen">Manajemen</a></li>
-              <li><a class="dropdown-item js-generate-invite" href="#" data-role="kepala_ruangan">Kepala Ruangan</a></li>
-              <li><a class="dropdown-item js-generate-invite" href="#" data-role="petugas_it">Petugas IT</a></li>
-              <li><a class="dropdown-item js-generate-invite" href="#" data-role="petugas_helpdesk">Petugas Helpdesk</a></li>
-            </ul>
-          </div>
+          <button type="button" id="btn-generate-form" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+            <i data-feather="link"></i>
+            <span>Generate Form</span>
+          </button>
         </div>
       </div>
 
@@ -47,7 +39,6 @@
                 <th>Nama</th>
                 <th>Username</th>
                 <th>No HP</th>
-                <th>Role</th>
                 <th>Status</th>
                 <th style="width:160px">Aksi</th>
               </tr>
@@ -59,32 +50,6 @@
                   <td>{{ $user->name }}</td>
                   <td>{{ $user->username }}</td>
                   <td>{{ $user->phone ?? '-' }}</td>
-                  @php
-                    $roleLabelMap = [
-                      'admin' => ['label' => 'ADMIN', 'class' => 'primary'],
-                      'petugas_it' => ['label' => 'PETUGAS IT', 'class' => 'secondary'],
-                      'petugas_helpdesk' => ['label' => 'PETUGAS HELPDESK', 'class' => 'secondary'],
-                      'petugas' => ['label' => 'PETUGAS IT', 'class' => 'secondary'],
-                      'manajemen' => ['label' => 'MANAJEMEN', 'class' => 'info'],
-                      'kepala_ruangan' => ['label' => 'KEPALA RUANGAN', 'class' => 'warning'],
-                    ];
-                    $roleMeta = $roleLabelMap[$user->role] ?? ['label' => strtoupper($user->role), 'class' => 'secondary'];
-                    $isAdminUser = (($user->is_admin ?? false) || $user->role === 'admin');
-                    if ($isAdminUser) {
-                      $roleMeta = ['label' => 'ADMIN', 'class' => 'primary'];
-                    }
-                    if (!$isAdminUser && $user->role === 'manajemen') {
-                      $jabatan = $user->jabatan_id ?: 'Tanpa Jabatan';
-                      $roleMeta['label'] = 'M - ' . strtoupper($jabatan);
-                    }
-                    if ($user->role === 'kepala_ruangan') {
-                      $roomName = $user->room->name ?? 'Tanpa Ruangan';
-                      $roleMeta['label'] = 'KARU ' . $roomName;
-                    }
-                  @endphp
-                  <td>
-                    <span class="badge bg-{{ $roleMeta['class'] }} text-uppercase">{{ $roleMeta['label'] }}</span>
-                  </td>
                   <td>
                     @if($user->is_verified)
                       <span class="badge bg-success">Tervalidasi</span>
@@ -190,41 +155,63 @@
   })();
 
   (function () {
-    const links = document.querySelectorAll('.js-generate-invite');
-    if (!links.length) return;
-    const copyLink = async (role) => {
-      try {
-        const res = await fetch("{{ route('users.invite') }}?role=" + encodeURIComponent(role), {
-          headers: { 'Accept': 'application/json' }
-        });
-        const data = await res.json();
-        const link = data.link || '';
-        if (!link) throw new Error('Link kosong');
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(link);
-        } else {
-          const temp = document.createElement('textarea');
-          temp.value = link;
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand('copy');
-          temp.remove();
-        }
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Link berhasil disalin.' });
-        }
-      } catch (e) {
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyalin link.' });
-        }
+    const btnGenerate = document.getElementById('btn-generate-form');
+    if (!btnGenerate) return;
+
+    btnGenerate.addEventListener('click', async function () {
+      if (typeof Swal === 'undefined') {
+        alert('SweetAlert tidak tersedia.');
+        return;
       }
-    };
-    links.forEach((el) => {
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        const role = el.getAttribute('data-role');
-        if (role) copyLink(role);
+
+      const result = await Swal.fire({
+        title: 'Kirim Form Pendaftaran',
+        input: 'text',
+        inputLabel: 'No HP Tujuan',
+        inputPlaceholder: 'Contoh: 62812xxxxxxx / 0812xxxxxxx',
+        showCancelButton: true,
+        confirmButtonText: 'Kirim',
+        cancelButtonText: 'Batal',
+        showLoaderOnConfirm: true,
+        preConfirm: async (phone) => {
+          const normalized = String(phone || '').trim();
+          if (!normalized) {
+            Swal.showValidationMessage('No HP wajib diisi.');
+            return false;
+          }
+
+          try {
+            const res = await fetch("{{ route('users.invite.send') }}", {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': "{{ csrf_token() }}"
+              },
+              body: JSON.stringify({ phone: normalized })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) {
+              throw new Error(data.message || 'Gagal mengirim link form.');
+            }
+
+            return data;
+          } catch (error) {
+            Swal.showValidationMessage(error.message || 'Terjadi kesalahan.');
+            return false;
+          }
+        },
+        allowOutsideClick: () => !Swal.isLoading()
       });
+
+      if (result.isConfirmed && result.value) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil',
+          text: result.value.message || 'Link form berhasil dikirim.'
+        });
+      }
     });
   })();
 
