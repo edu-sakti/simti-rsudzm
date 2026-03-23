@@ -93,7 +93,7 @@
   function shouldShowRoom(roleName) {
     if (!roleName) return false;
     const value = roleName.toLowerCase().trim();
-    return value === 'kepala' || value === 'kepala ruang' || value === 'petugas';
+    return value === 'kepala' || value === 'petugas';
   }
 
   function toggleRoomField() {

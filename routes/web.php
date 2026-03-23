@@ -71,6 +71,20 @@ if (!function_exists('peran_token_decode')) {
     }
 }
 
+if (!function_exists('pj_ruangan_token_encode')) {
+    function pj_ruangan_token_encode(string $value): string
+    {
+        return ticket_token_encode($value);
+    }
+}
+
+if (!function_exists('pj_ruangan_token_decode')) {
+    function pj_ruangan_token_decode(string $token): string
+    {
+        return ticket_token_decode($token);
+    }
+}
+
 if (!function_exists('role_maps')) {
     function role_maps(): array
     {
@@ -497,6 +511,7 @@ Route::get('/peran/create', function () {
 
     $roles = DB::table('roles')
         ->select('id', 'name')
+        ->where('name', '<>', 'Kepala Ruang')
         ->orderBy('name')
         ->get();
 
@@ -530,7 +545,7 @@ Route::post('/peran', function (Request $request) {
     }
 
     $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')));
-    $needsRoom = in_array($roleName, ['kepala', 'kepala ruang', 'petugas'], true);
+    $needsRoom = in_array($roleName, ['kepala', 'petugas'], true);
     if ($needsRoom) {
         $request->validate([
             'room_id' => ['required', 'integer', 'exists:rooms,id'],
@@ -552,22 +567,18 @@ Route::post('/peran', function (Request $request) {
 
     if ($needsRoom) {
         $roomId = (int) $request->input('room_id');
-        if (in_array($roleName, ['kepala', 'kepala ruang'], true)) {
-            DB::table('room_petugas')
-                ->where('room_id', $roomId)
-                ->where('is_kepala', true)
-                ->update(['is_kepala' => false]);
-        }
 
-        DB::table('room_petugas')->where('user_id', $data['user_id'])->delete();
-
-        DB::table('room_petugas')->insert([
+        DB::table('room_users')->where('user_id', $data['user_id'])->delete();
+        DB::table('room_users')->insert([
             'user_id' => $data['user_id'],
             'room_id' => $roomId,
-            'is_kepala' => in_array($roleName, ['kepala', 'kepala ruang'], true),
+            'role' => $roleName,
+            'description' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     } else {
-        DB::table('room_petugas')->where('user_id', $data['user_id'])->delete();
+        DB::table('room_users')->where('user_id', $data['user_id'])->delete();
     }
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil ditambahkan.');
@@ -605,6 +616,7 @@ Route::get('/peran/{token}/edit', function (string $token) {
 
     $roles = DB::table('roles')
         ->select('id', 'name')
+        ->where('name', '<>', 'Kepala Ruang')
         ->orderBy('name')
         ->get();
 
@@ -612,10 +624,14 @@ Route::get('/peran/{token}/edit', function (string $token) {
         ->select('id', 'name', 'room_id')
         ->orderBy('name')
         ->get();
-    $selectedRoomId = DB::table('room_petugas')
-        ->where('user_id', $peran->user_id)
-        ->where('is_kepala', true)
-        ->value('room_id');
+    $selectedRoomId = null;
+    $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $peran->role_id)->value('name')));
+    if (in_array($roleName, ['kepala', 'petugas'], true)) {
+        $selectedRoomId = DB::table('room_users')
+            ->where('user_id', $peran->user_id)
+            ->where('role', $roleName)
+            ->value('room_id');
+    }
 
     return view('peran.edit', compact('peran', 'users', 'roles', 'rooms', 'selectedRoomId', 'token'));
 })->name('peran.edit')->middleware(['auth', 'admin']);
@@ -629,7 +645,7 @@ Route::put('/peran/{id}', function (Request $request, string $id) {
     ]);
 
     $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')));
-    $needsRoom = in_array($roleName, ['kepala', 'kepala ruang', 'petugas'], true);
+    $needsRoom = in_array($roleName, ['kepala', 'petugas'], true);
     if ($needsRoom) {
         $request->validate([
             'room_id' => ['required', 'integer', 'exists:rooms,id'],
@@ -645,22 +661,18 @@ Route::put('/peran/{id}', function (Request $request, string $id) {
 
     if ($needsRoom) {
         $roomId = (int) $request->input('room_id');
-        if (in_array($roleName, ['kepala', 'kepala ruang'], true)) {
-            DB::table('room_petugas')
-                ->where('room_id', $roomId)
-                ->where('is_kepala', true)
-                ->update(['is_kepala' => false]);
-        }
 
-        DB::table('room_petugas')->where('user_id', $id)->delete();
-
-        DB::table('room_petugas')->insert([
+        DB::table('room_users')->where('user_id', (int) $id)->delete();
+        DB::table('room_users')->insert([
             'user_id' => (int) $id,
             'room_id' => $roomId,
-            'is_kepala' => in_array($roleName, ['kepala', 'kepala ruang'], true),
+            'role' => $roleName,
+            'description' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     } else {
-        DB::table('room_petugas')->where('user_id', $id)->delete();
+        DB::table('room_users')->where('user_id', (int) $id)->delete();
     }
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil diperbarui.');
@@ -687,7 +699,7 @@ Route::delete('/peran/{id}', function (string $id) {
             'updated_at' => now(),
         ]);
 
-    DB::table('room_petugas')->where('user_id', $id)->delete();
+    DB::table('room_users')->where('user_id', $id)->delete();
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil dihapus.');
 })->name('peran.destroy')->middleware(['auth', 'admin']);
@@ -1102,9 +1114,142 @@ Route::get('/ruangan', function (Request $request) use ($roomCategories) {
     ]);
 })->name('rooms.index')->middleware(['auth', 'permission:ruangan,read']);
 
-Route::get('/pj-ruangan', function () {
-    return view('pj-ruangan.index');
+Route::get('/pj-ruangan', function (Request $request) {
+    $search = $request->query('q');
+    $entries = DB::table('room_petugas as rp')
+        ->leftJoin('users as u', 'u.id', '=', 'rp.user_id')
+        ->leftJoin('rooms as r', 'r.id', '=', 'rp.room_id')
+        ->when($search, function ($query, $search) {
+            $query->where('u.name', 'like', "%{$search}%")
+                ->orWhere('u.username', 'like', "%{$search}%")
+                ->orWhere('r.name', 'like', "%{$search}%")
+                ->orWhere('r.room_id', 'like', "%{$search}%");
+        })
+        ->select([
+            'rp.id',
+            'rp.description',
+            'u.name as user_name',
+            'u.username',
+            'r.name as room_name',
+            'r.room_id',
+        ])
+        ->orderBy('rp.id', 'desc')
+        ->paginate(20)
+        ->withQueryString();
+
+    return view('pj-ruangan.index', compact('entries', 'search'));
 })->name('rooms.pj')->middleware(['auth', 'permission:pj_ruangan,read']);
+
+Route::get('/pj-ruangan/tambah', function () {
+    $roleId = Role::where('name', 'Petugas IT')->value('id');
+    $petugas = User::query()
+        ->when($roleId, function ($query, $roleId) {
+            $query->where('role_id', $roleId);
+        })
+        ->orderBy('name')
+        ->get();
+    $rooms = Room::orderBy('room_id')->get();
+
+    return view('pj-ruangan.create', compact('petugas', 'rooms'));
+})->name('pj-ruangan.create')->middleware(['auth', 'permission:pj_ruangan,create']);
+
+Route::post('/pj-ruangan', function (Request $request) {
+    $data = $request->validate([
+        'user_id' => ['required', 'integer', 'exists:users,id'],
+        'room_id' => ['required', 'integer', 'exists:rooms,id'],
+        'description' => ['nullable', 'string'],
+    ]);
+
+    $existing = DB::table('room_petugas')
+        ->where('user_id', $data['user_id'])
+        ->where('room_id', $data['room_id'])
+        ->first();
+
+    if ($existing) {
+        DB::table('room_petugas')->where('id', $existing->id)->update([
+            'description' => $data['description'] ?? null,
+            'updated_at' => now(),
+        ]);
+    } else {
+        DB::table('room_petugas')->insert([
+            'user_id' => $data['user_id'],
+            'room_id' => $data['room_id'],
+            'description' => $data['description'] ?? null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    return redirect()->route('rooms.pj')->with('success', 'PJ Ruangan berhasil ditambahkan.');
+})->name('pj-ruangan.store')->middleware(['auth', 'permission:pj_ruangan,create']);
+
+Route::get('/pj-ruangan/{id}/edit', function (int $id) {
+    return redirect()->route('pj-ruangan.edit', pj_ruangan_token_encode((string) $id));
+})->whereNumber('id')->middleware(['auth', 'permission:pj_ruangan,update']);
+
+Route::get('/pj-ruangan/{token}/edit', function (string $token) {
+    try {
+        $id = pj_ruangan_token_decode($token);
+    } catch (\Throwable $e) {
+        abort(404);
+    }
+
+    $entry = DB::table('room_petugas')->where('id', $id)->first();
+    if (!$entry) {
+        abort(404);
+    }
+
+    $roleId = Role::where('name', 'Petugas IT')->value('id');
+    $petugas = User::query()
+        ->when($roleId, function ($query, $roleId) {
+            $query->where('role_id', $roleId);
+        })
+        ->orderBy('name')
+        ->get();
+    $rooms = Room::orderBy('room_id')->get();
+
+    return view('pj-ruangan.edit', compact('entry', 'petugas', 'rooms', 'token'));
+})->name('pj-ruangan.edit')->middleware(['auth', 'permission:pj_ruangan,update']);
+
+Route::put('/pj-ruangan/{token}', function (Request $request, string $token) {
+    try {
+        $id = pj_ruangan_token_decode($token);
+    } catch (\Throwable $e) {
+        abort(404);
+    }
+
+    $entry = DB::table('room_petugas')->where('id', $id)->first();
+    if (!$entry) {
+        abort(404);
+    }
+
+    $data = $request->validate([
+        'user_id' => ['required', 'integer', 'exists:users,id'],
+        'room_id' => ['required', 'integer', 'exists:rooms,id'],
+        'description' => ['nullable', 'string'],
+    ]);
+
+    DB::table('room_petugas')->where('id', $id)->update([
+        'user_id' => $data['user_id'],
+        'room_id' => $data['room_id'],
+        'description' => $data['description'] ?? null,
+        'updated_at' => now(),
+    ]);
+
+    return redirect()->route('rooms.pj')->with('success', 'PJ Ruangan berhasil diperbarui.');
+})->name('pj-ruangan.update')->middleware(['auth', 'permission:pj_ruangan,update']);
+
+Route::delete('/pj-ruangan/{token}', function (string $token) {
+    try {
+        $id = pj_ruangan_token_decode($token);
+    } catch (\Throwable $e) {
+        abort(404);
+    }
+
+    DB::table('room_petugas')->where('id', $id)->delete();
+
+    return redirect()->route('rooms.pj')->with('success', 'PJ Ruangan berhasil dihapus.');
+})->name('pj-ruangan.destroy')->middleware(['auth', 'permission:pj_ruangan,delete']);
 
 // ---------------- Jabatan (Master Data) ----------------
 Route::get('/jabatan', function (Request $request) {
