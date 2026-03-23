@@ -4,6 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title') | SIMTI RSUDZM</title>
+    <meta name="description" content="SIMTI RSUDZM - Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
+    <meta property="og:title" content="@yield('title', 'SIMTI RSUDZM') | SIMTI RSUDZM">
+    <meta property="og:description" content="Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:image" content="{{ asset('simti.png') }}">
+    <meta property="og:image:alt" content="Logo SIMTI RSUDZM">
+    <meta name="twitter:card" content="summary_large_image">
     @stack('meta')
 
     <link rel="shortcut icon" href="{{ asset('adminkit/img/icons/favicon.ico') }}" type="image/x-icon">
