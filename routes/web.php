@@ -2399,7 +2399,8 @@ Route::delete('/perangkat/spesifikasi-perangkat/{device}', function (Device $dev
 })->name('device.spec.delete')->middleware(['auth', 'permission:spesifikasi_perangkat,delete']);
 
 // ---------------- Profile ----------------
-Route::get('/profile', function () {
+Route::get('/profile', function (Request $request) {
+    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     $profile = DB::table('profiles')->where('user_id', $user->id)->first();
     if (!$profile) {
@@ -2409,7 +2410,8 @@ Route::get('/profile', function () {
     return view('profile.index', compact('profile', 'user', 'token'));
 })->name('profile.home')->middleware('auth');
 
-Route::get('/profile/tambah', function () {
+Route::get('/profile/tambah', function (Request $request) {
+    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     $profile = DB::table('profiles')->where('user_id', $user->id)->first();
     if ($profile) {
@@ -2419,6 +2421,7 @@ Route::get('/profile/tambah', function () {
 })->name('profile.create')->middleware('auth');
 
 Route::post('/profile', function (Request $request) {
+    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     $exists = DB::table('profiles')->where('user_id', $user->id)->exists();
     if ($exists) {
@@ -2467,11 +2470,13 @@ Route::post('/profile', function (Request $request) {
         ->with('success', 'Profil berhasil disimpan.');
 })->name('profile.store')->middleware('auth');
 
-Route::get('/profile/{id}/edit', function (int $id) {
+Route::get('/profile/{id}/edit', function (Request $request, int $id) {
+    $request->session()->put('active_app', 'profile');
     return redirect()->route('profile.edit', profile_token_encode((string) $id));
 })->whereNumber('id')->middleware('auth');
 
-Route::get('/profile/{token}/edit', function (string $token) {
+Route::get('/profile/{token}/edit', function (Request $request, string $token) {
+    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     try {
         $id = profile_token_decode($token);
@@ -2489,6 +2494,7 @@ Route::get('/profile/{token}/edit', function (string $token) {
 })->name('profile.edit')->middleware('auth');
 
 Route::put('/profile/{token}', function (Request $request, string $token) {
+    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     try {
         $id = profile_token_decode($token);

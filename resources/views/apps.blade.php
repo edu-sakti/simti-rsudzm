@@ -209,7 +209,7 @@
         };
       @endphp
 
-      <a href="{{ url('/profile') }}" class="app-tile" data-title="profile profil">
+      <a href="{{ url('/apps/launch/profile') }}" class="app-tile" data-title="profile profil">
         <div class="app-icon app-sky"><i data-feather="user"></i></div>
         <div class="app-name">Profil</div>
       </a>

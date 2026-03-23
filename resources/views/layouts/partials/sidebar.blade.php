@@ -3,16 +3,17 @@
 		@php
 			$activeAppRaw = session('active_app');
 			$activeApp = in_array($activeAppRaw, ['inventaris', 'jaringan', 'monitoring'], true) ? 'master-data' : $activeAppRaw;
-				$portalTitleMap = [
-					'helpdesk' => 'Helpdesk',
-					'master-data' => 'Master Data',
-					'persuratan' => 'Persuratan',
-					'pengaduan' => 'Pengaduan',
-					'pengajuan' => 'Pengajuan',
-					'kepegawaian' => 'Kepegawaian',
-					'manajemen-pengguna' => 'Pengguna',
-					'integrasi' => 'Setting',
-				];
+			$portalTitleMap = [
+				'helpdesk' => 'Helpdesk',
+				'master-data' => 'Master Data',
+				'persuratan' => 'Persuratan',
+				'pengaduan' => 'Pengaduan',
+				'pengajuan' => 'Pengajuan',
+				'kepegawaian' => 'Kepegawaian',
+				'profile' => 'Profile',
+				'manajemen-pengguna' => 'Profile',
+				'integrasi' => 'Setting',
+			];
 			$portalTitle = $portalTitleMap[$activeApp] ?? 'SIMTI RSUDZM';
 		@endphp
 		<a class="sidebar-brand" href="{{ url('/apps') }}">
@@ -24,7 +25,7 @@
 				$roleKey = auth()->user()->role_key ?? null;
 				$roleId = auth()->user()->role_id ?? null;
 				$isAdmin = (bool) (auth()->user()->is_admin ?? false);
-				$isProfileApp = request()->is('profile') || request()->is('profile/*');
+				$isProfileApp = ($activeApp === 'profile') || request()->is('profile') || request()->is('profile/*');
 				$permissionMap = collect();
 				if ($roleId && !$isAdmin) {
 					$permissionMap = \App\Models\RolePermission::where('role_id', $roleId)->get()->keyBy('menu');
@@ -68,16 +69,75 @@
 				};
 			@endphp
 			@if($isProfileApp)
+				@php
+					$profilActive = request()->is('profile') || request()->is('profile/*');
+					$riwayatActive = request()->is('profile/riwayat*');
+				@endphp
 				<li class="sidebar-item {{ request()->is('dashboard') ? 'active' : '' }}">
 					<a class="sidebar-link" href="{{ url('dashboard') }}">
 						<i class="align-middle" data-feather="home"></i>
 						<span class="align-middle">Dashboard</span>
 					</a>
 				</li>
-				<li class="sidebar-item {{ request()->is('profile') ? 'active' : '' }}">
-					<a class="sidebar-link" href="{{ url('/profile') }}">
+
+				<li class="sidebar-item {{ $profilActive ? 'active' : '' }}">
+					<a class="sidebar-link {{ $profilActive ? '' : 'collapsed' }}" data-bs-toggle="collapse" href="#profilSubmenu" role="button" aria-expanded="{{ $profilActive ? 'true' : 'false' }}" aria-controls="profilSubmenu">
 						<i class="align-middle" data-feather="user"></i>
 						<span class="align-middle">Profil</span>
+					</a>
+					<ul id="profilSubmenu" class="sidebar-dropdown list-unstyled collapse {{ $profilActive ? 'show' : '' }}">
+						<li class="sidebar-item {{ request()->is('profile') ? 'active' : '' }}">
+							<a class="sidebar-link" href="{{ url('/profile') }}">
+								<i class="align-middle" data-feather="file-text"></i>
+								<span class="align-middle">Data Pribadi</span>
+							</a>
+						</li>
+						<li class="sidebar-item">
+							<a class="sidebar-link" href="javascript:void(0)">
+								<i class="align-middle" data-feather="phone"></i>
+								<span class="align-middle">Kontak Darurat</span>
+							</a>
+						</li>
+					</ul>
+				</li>
+
+				<li class="sidebar-item {{ $riwayatActive ? 'active' : '' }}">
+					<a class="sidebar-link {{ $riwayatActive ? '' : 'collapsed' }}" data-bs-toggle="collapse" href="#riwayatProfilSubmenu" role="button" aria-expanded="{{ $riwayatActive ? 'true' : 'false' }}" aria-controls="riwayatProfilSubmenu">
+						<i class="align-middle" data-feather="clock"></i>
+						<span class="align-middle">Riwayat</span>
+					</a>
+					<ul id="riwayatProfilSubmenu" class="sidebar-dropdown list-unstyled collapse {{ $riwayatActive ? 'show' : '' }}">
+						<li class="sidebar-item">
+							<a class="sidebar-link" href="javascript:void(0)">
+								<i class="align-middle" data-feather="book-open"></i>
+								<span class="align-middle">Pendidikan</span>
+							</a>
+						</li>
+						<li class="sidebar-item">
+							<a class="sidebar-link" href="javascript:void(0)">
+								<i class="align-middle" data-feather="briefcase"></i>
+								<span class="align-middle">Riwayat Kerja</span>
+							</a>
+						</li>
+					</ul>
+				</li>
+
+				<li class="sidebar-item">
+					<a class="sidebar-link" href="javascript:void(0)">
+						<i class="align-middle" data-feather="award"></i>
+						<span class="align-middle">Keprofesian</span>
+					</a>
+				</li>
+				<li class="sidebar-item">
+					<a class="sidebar-link" href="javascript:void(0)">
+						<i class="align-middle" data-feather="folder"></i>
+						<span class="align-middle">Data Pendukung</span>
+					</a>
+				</li>
+				<li class="sidebar-item">
+					<a class="sidebar-link" href="{{ url('/apps') }}">
+						<i class="align-middle" data-feather="grid"></i>
+						<span class="align-middle">Kembali</span>
 					</a>
 				</li>
 			@elseif ($roleKey === 'kepala_ruangan')
@@ -434,7 +494,7 @@
 			@endif
 
                 @auth
-					@if(!$isProfileApp || $isAdmin)
+					@if(!$isProfileApp)
 					<li class="sidebar-item">
 						<a class="sidebar-link" href="{{ url('/apps') }}">
 							<i class="align-middle" data-feather="grid"></i>
