@@ -3,14 +3,19 @@
 @section('title', 'Selamat Datang')
 
 @push('meta')
-<meta name="description" content="SIMTI RSUDZM - Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
-<meta property="og:title" content="SIMTI RSUDZM - Portal SIMTI">
-<meta property="og:description" content="Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="{{ url('/') }}">
-<meta property="og:image" content="{{ asset('simti.png') }}">
-<meta property="og:image:alt" content="Logo SIMTI RSUDZM">
-<meta name="twitter:card" content="summary_large_image">
+    <meta name="description" content="Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
+
+    <meta property="og:title" content="SIMTI RSUDZM">
+    <meta property="og:description" content="Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:image" content="{{ asset('simti.png') }}">
+    <meta property="og:image:alt" content="Logo SIMTI RSUDZM">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SIMTI RSUDZM">
+    <meta name="twitter:description" content="Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
+    <meta name="twitter:image" content="{{ asset('simti.png') }}">
 @endpush
 
 @push('styles')

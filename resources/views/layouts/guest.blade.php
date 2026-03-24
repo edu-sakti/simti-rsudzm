@@ -38,13 +38,7 @@
 
 <footer class="py-3 mt-auto text-center" style="font-size: 14px; color: #555;">
     <div>
-        &copy; {{ date('Y') }} SIMTI RSUDZM. All rights reserved.
-    </div>
-    <div>
-        Dikembangkan oleh 
-        <a href="https://edu-sakti.github.io/" class="text-reset text-decoration-none" target="_blank" rel="noopener">
-            <strong>Muhammad Syahputra</strong>
-        </a> • Versi 1.0.0
+        &copy; {{ date('Y') }} SIMTI. All rights reserved.
     </div>
 </footer>
 
@@ -78,3 +72,4 @@
     @stack('scripts')
 </body>
 </html>
+

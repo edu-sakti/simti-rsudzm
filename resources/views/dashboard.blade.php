@@ -5,12 +5,7 @@
 @section('content')
 	<h1 class="page-title">Dashboard</h1>
 
-	@php
-		$activeApp = session('active_app');
-	@endphp
-
-	@if($activeApp === 'helpdesk')
-		<div class="row g-3 mb-4">
+	<div class="row g-3 mb-4">
 			<div class="col-12 col-sm-6 col-xl-3">
 				<div class="card summary-card shadow-sm">
 					<div class="card-body d-flex align-items-center justify-content-between">
@@ -63,8 +58,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
-	@endif
+	</div>
 @endsection
 
 @push('styles')

@@ -1,508 +1,289 @@
 <nav id="sidebar" class="sidebar js-sidebar">
-	<div class="sidebar-content js-simplebar">
-		@php
-			$activeAppRaw = session('active_app');
-			$activeApp = in_array($activeAppRaw, ['inventaris', 'jaringan', 'monitoring'], true) ? 'master-data' : $activeAppRaw;
-			$portalTitleMap = [
-				'helpdesk' => 'Helpdesk',
-				'master-data' => 'Master Data',
-				'persuratan' => 'Persuratan',
-				'pengaduan' => 'Pengaduan',
-				'pengajuan' => 'Pengajuan',
-				'kepegawaian' => 'Kepegawaian',
-				'profile' => 'Profile',
-				'manajemen-pengguna' => 'Profile',
-				'integrasi' => 'Setting',
-			];
-			$portalTitle = $portalTitleMap[$activeApp] ?? 'SIMTI RSUDZM';
-		@endphp
-		<a class="sidebar-brand" href="{{ url('/apps') }}">
-			<span class="align-middle">{{ $portalTitle }}</span>
-		</a>
+    <div class="sidebar-content js-simplebar">
+        <a class="sidebar-brand" href="{{ url('/dashboard') }}">
+            <span class="align-middle">SIMTI RSUDZM</span>
+        </a>
 
-		<ul class="sidebar-nav">
-			@php
-				$roleKey = auth()->user()->role_key ?? null;
-				$roleId = auth()->user()->role_id ?? null;
-				$isAdmin = (bool) (auth()->user()->is_admin ?? false);
-				$isProfileApp = ($activeApp === 'profile') || request()->is('profile') || request()->is('profile/*');
-				$permissionMap = collect();
-				if ($roleId && !$isAdmin) {
-					$permissionMap = \App\Models\RolePermission::where('role_id', $roleId)->get()->keyBy('menu');
-				}
-				$canMenu = function (string $key) use ($isAdmin, $permissionMap) {
-					if ($isAdmin) {
-						return true;
-					}
-					return (bool) ($permissionMap[$key]->can_read ?? false);
-				};
-				$appMenus = [
-					'helpdesk' => ['dashboard', 'helpdesk', 'laporan'],
-					'master-data' => ['perangkat', 'ruangan', 'pj_ruangan', 'roles', 'ip_address', 'isp', 'cctv'],
-					'persuratan' => ['surat_masuk', 'surat_keluar', 'disposisi', 'arsip_surat'],
-					'pengaduan' => ['pengaduan_data'],
-					'kepegawaian' => [
-						'data_pegawai',
-						'pegawai_pns',
-						'pegawai_pppk',
-						'riwayat_pegawai',
-						'riwayat_pendidikan',
-						'riwayat_pangkat',
-						'riwayat_mutasi',
-						'riwayat_pelatihan',
-						'jabatan',
-						'legalitas_sip',
-						'legalitas_str',
-					],
-					'pengajuan' => ['pengajuan'],
-					'manajemen-pengguna' => ['pengguna', 'peran_pengguna', 'hak_akses'],
-					'integrasi' => ['wa_gateway', 'log_aktivitas'],
-				];
-				$showMenu = function (string $key) use ($activeApp, $appMenus) {
-					if (!$activeApp || !isset($appMenus[$activeApp])) {
-						return true;
-					}
-					if (in_array($key, ['dashboard', 'laporan', 'logout'], true)) {
-						return true;
-					}
-					return in_array($key, $appMenus[$activeApp], true);
-				};
-			@endphp
-			@if($isProfileApp)
-				@php
-					$profilActive = request()->is('profile') || request()->is('profile/*');
-					$riwayatActive = request()->is('profile/riwayat*');
-				@endphp
-				<li class="sidebar-item {{ request()->is('dashboard') ? 'active' : '' }}">
-					<a class="sidebar-link" href="{{ url('dashboard') }}">
-						<i class="align-middle" data-feather="home"></i>
-						<span class="align-middle">Dashboard</span>
-					</a>
-				</li>
+        @php
+            $user = auth()->user();
+            $isAdmin = (bool) ($user->is_admin ?? false);
+            $roleId = $user->role_id ?? null;
 
-				<li class="sidebar-item {{ $profilActive ? 'active' : '' }}">
-					<a class="sidebar-link {{ $profilActive ? '' : 'collapsed' }}" data-bs-toggle="collapse" href="#profilSubmenu" role="button" aria-expanded="{{ $profilActive ? 'true' : 'false' }}" aria-controls="profilSubmenu">
-						<i class="align-middle" data-feather="user"></i>
-						<span class="align-middle">Profil</span>
-					</a>
-					<ul id="profilSubmenu" class="sidebar-dropdown list-unstyled collapse {{ $profilActive ? 'show' : '' }}">
-						<li class="sidebar-item {{ request()->is('profile') ? 'active' : '' }}">
-							<a class="sidebar-link" href="{{ url('/profile') }}">
-								<i class="align-middle" data-feather="file-text"></i>
-								<span class="align-middle">Data Pribadi</span>
-							</a>
-						</li>
-						<li class="sidebar-item">
-							<a class="sidebar-link" href="javascript:void(0)">
-								<i class="align-middle" data-feather="phone"></i>
-								<span class="align-middle">Kontak Darurat</span>
-							</a>
-						</li>
-					</ul>
-				</li>
+            $permissionMap = collect();
+            if ($roleId && !$isAdmin) {
+                $permissionMap = \App\Models\RolePermission::where('role_id', $roleId)->get()->keyBy('menu');
+            }
 
-				<li class="sidebar-item {{ $riwayatActive ? 'active' : '' }}">
-					<a class="sidebar-link {{ $riwayatActive ? '' : 'collapsed' }}" data-bs-toggle="collapse" href="#riwayatProfilSubmenu" role="button" aria-expanded="{{ $riwayatActive ? 'true' : 'false' }}" aria-controls="riwayatProfilSubmenu">
-						<i class="align-middle" data-feather="clock"></i>
-						<span class="align-middle">Riwayat</span>
-					</a>
-					<ul id="riwayatProfilSubmenu" class="sidebar-dropdown list-unstyled collapse {{ $riwayatActive ? 'show' : '' }}">
-						<li class="sidebar-item">
-							<a class="sidebar-link" href="javascript:void(0)">
-								<i class="align-middle" data-feather="book-open"></i>
-								<span class="align-middle">Pendidikan</span>
-							</a>
-						</li>
-						<li class="sidebar-item">
-							<a class="sidebar-link" href="javascript:void(0)">
-								<i class="align-middle" data-feather="briefcase"></i>
-								<span class="align-middle">Riwayat Kerja</span>
-							</a>
-						</li>
-					</ul>
-				</li>
+            $canAccess = function (?string $permission = null, bool $adminOnly = false) use ($isAdmin, $permissionMap): bool {
+                if ($adminOnly) {
+                    return $isAdmin;
+                }
 
-				<li class="sidebar-item">
-					<a class="sidebar-link" href="javascript:void(0)">
-						<i class="align-middle" data-feather="award"></i>
-						<span class="align-middle">Keprofesian</span>
-					</a>
-				</li>
-				<li class="sidebar-item">
-					<a class="sidebar-link" href="javascript:void(0)">
-						<i class="align-middle" data-feather="folder"></i>
-						<span class="align-middle">Data Pendukung</span>
-					</a>
-				</li>
-				<li class="sidebar-item">
-					<a class="sidebar-link" href="{{ url('/apps') }}">
-						<i class="align-middle" data-feather="grid"></i>
-						<span class="align-middle">Kembali</span>
-					</a>
-				</li>
-			@elseif ($roleKey === 'kepala_ruangan')
-				<li class="sidebar-item {{ request()->is('dashboard') ? 'active' : '' }}">
-					@if($canMenu('dashboard') && $showMenu('dashboard'))
-						<a class="sidebar-link" href="{{ url('dashboard') }}">
-							<i class="align-middle" data-feather="home"></i>
-							<span class="align-middle">Dashboard</span>
-						</a>
-					@endif
-				</li>
+                if ($isAdmin) {
+                    return true;
+                }
 
-				<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
-					@if($canMenu('helpdesk') && $showMenu('helpdesk'))
-						<a class="sidebar-link" href="{{ url('/helpdesk') }}">
-							<i class="align-middle" data-feather="message-circle"></i>
-							<span class="align-middle">Tiket</span>
-						</a>
-					@endif
-				</li>
+                if (empty($permission)) {
+                    return true;
+                }
 
-				<li class="sidebar-item {{ request()->is('laporan') ? 'active' : '' }}">
-					@if($canMenu('laporan') && $showMenu('laporan'))
-						<a class="sidebar-link" href="{{ url('laporan') }}">
-							<i class="align-middle" data-feather="clipboard"></i>
-							<span class="align-middle">Laporan</span>
-						</a>
-					@endif
-				</li>
-			@else
+                return (bool) ($permissionMap[$permission]->can_read ?? false);
+            };
 
-			<li class="sidebar-item {{ request()->is('dashboard') ? 'active' : '' }}">
-				@if($canMenu('dashboard') && $showMenu('dashboard'))
-					<a class="sidebar-link" href="{{ url('dashboard') }}">
-						<i class="align-middle" data-feather="home"></i>
-						<span class="align-middle">Dashboard</span>
-					</a>
-				@endif
-			</li>
+            $isActive = function (array|string $patterns): bool {
+                foreach ((array) $patterns as $pattern) {
+                    if (request()->is($pattern)) {
+                        return true;
+                    }
+                }
 
-			<li class="sidebar-item {{ request()->is('ip-address') ? 'active' : '' }}">
-				@if($canMenu('ip_address') && $showMenu('ip_address'))
-					<a class="sidebar-link" href="{{ route('ipaddr.index') }}">
-						<i class="align-middle" data-feather="map-pin"></i>
-						<span class="align-middle">IP Address</span>
-					</a>
-				@endif
-			</li>
+                return false;
+            };
 
-			<li class="sidebar-item {{ request()->is('perangkat') ? 'active' : '' }}">
-				@if($canMenu('perangkat') && $showMenu('perangkat'))
-					<a class="sidebar-link" href="{{ route('device.index') }}">
-						<i class="align-middle" data-feather="server"></i>
-						<span class="align-middle">Perangkat</span>
-					</a>
-				@endif
-			</li>
+            $sections = [
+                [
+                    'header' => 'Umum',
+                    'items' => [
+                        ['type' => 'link', 'label' => 'Dashboard', 'icon' => 'home', 'url' => url('/dashboard'), 'patterns' => ['dashboard'], 'permission' => 'dashboard'],
+                    ],
+                ],
+                [
+                    'header' => 'Profil',
+                    'items' => [
+                        [
+                            'type' => 'collapse',
+                            'id' => 'profilSubmenu',
+                            'label' => 'Profil',
+                            'icon' => 'user',
+                            'patterns' => ['profile', 'profile/*'],
+                            'children' => [
+                                ['label' => 'Data Pribadi', 'icon' => 'file-text', 'url' => url('/profile'), 'patterns' => ['profile']],
+                                ['label' => 'Kontak Darurat', 'icon' => 'phone', 'url' => 'javascript:void(0)', 'patterns' => []],
+                            ],
+                        ],
+                        [
+                            'type' => 'collapse',
+                            'id' => 'riwayatProfilSubmenu',
+                            'label' => 'Riwayat',
+                            'icon' => 'clock',
+                            'patterns' => ['profile/riwayat*'],
+                            'children' => [
+                                ['label' => 'Pendidikan', 'icon' => 'book-open', 'url' => 'javascript:void(0)', 'patterns' => []],
+                                ['label' => 'Riwayat Kerja', 'icon' => 'briefcase', 'url' => 'javascript:void(0)', 'patterns' => []],
+                            ],
+                        ],
+                        ['type' => 'link', 'label' => 'Keprofesian', 'icon' => 'award', 'url' => 'javascript:void(0)', 'patterns' => []],
+                        ['type' => 'link', 'label' => 'Data Pendukung', 'icon' => 'folder', 'url' => 'javascript:void(0)', 'patterns' => []],
+                    ],
+                ],
+                [
+                    'header' => 'Helpdesk',
+                    'items' => [
+                        ['type' => 'link', 'label' => 'Tiket', 'icon' => 'message-circle', 'url' => url('/helpdesk'), 'patterns' => ['helpdesk'], 'permission' => 'helpdesk'],
+                    ],
+                ],
+                [
+                    'header' => 'Persuratan',
+                    'items' => [
+                        ['type' => 'link', 'label' => 'Surat Masuk', 'icon' => 'inbox', 'url' => url('/persuratan/surat-masuk'), 'patterns' => ['persuratan/surat-masuk'], 'permission' => 'surat_masuk'],
+                        ['type' => 'link', 'label' => 'Surat Keluar', 'icon' => 'send', 'url' => url('/persuratan/surat-keluar'), 'patterns' => ['persuratan/surat-keluar'], 'permission' => 'surat_keluar'],
+                        ['type' => 'link', 'label' => 'Disposisi', 'icon' => 'corner-up-right', 'url' => url('/persuratan/disposisi'), 'patterns' => ['persuratan/disposisi'], 'permission' => 'disposisi'],
+                        ['type' => 'link', 'label' => 'Arsip Surat', 'icon' => 'archive', 'url' => url('/persuratan/arsip-surat'), 'patterns' => ['persuratan/arsip-surat'], 'permission' => 'arsip_surat'],
+                    ],
+                ],
+                [
+                    'header' => 'Kepegawaian',
+                    'items' => [
+                        [
+                            'type' => 'collapse',
+                            'id' => 'pegawaiSubmenu',
+                            'label' => 'Data Pegawai',
+                            'icon' => 'users',
+                            'permission' => 'data_pegawai',
+                            'patterns' => ['kepegawaian/data-pegawai', 'kepegawaian/pns', 'kepegawaian/pppk'],
+                            'children' => [
+                                ['label' => 'PNS', 'icon' => 'user-check', 'url' => url('/kepegawaian/pns'), 'patterns' => ['kepegawaian/pns'], 'permission' => 'pegawai_pns'],
+                                ['label' => 'PPPK', 'icon' => 'user-plus', 'url' => url('/kepegawaian/pppk'), 'patterns' => ['kepegawaian/pppk'], 'permission' => 'pegawai_pppk'],
+                            ],
+                        ],
+                        [
+                            'type' => 'collapse',
+                            'id' => 'riwayatSubmenu',
+                            'label' => 'Riwayat Pegawai',
+                            'icon' => 'clock',
+                            'permission' => 'riwayat_pegawai',
+                            'patterns' => [
+                                'kepegawaian/riwayat',
+                                'kepegawaian/riwayat/pendidikan',
+                                'kepegawaian/riwayat/pangkat-golongan',
+                                'kepegawaian/riwayat/mutasi',
+                                'kepegawaian/riwayat/pelatihan',
+                            ],
+                            'children' => [
+                                ['label' => 'Pendidikan', 'icon' => 'book-open', 'url' => url('/kepegawaian/riwayat/pendidikan'), 'patterns' => ['kepegawaian/riwayat/pendidikan'], 'permission' => 'riwayat_pendidikan'],
+                                ['label' => 'Pangkat / Golongan', 'icon' => 'trending-up', 'url' => url('/kepegawaian/riwayat/pangkat-golongan'), 'patterns' => ['kepegawaian/riwayat/pangkat-golongan'], 'permission' => 'riwayat_pangkat'],
+                                ['label' => 'Mutasi', 'icon' => 'shuffle', 'url' => url('/kepegawaian/riwayat/mutasi'), 'patterns' => ['kepegawaian/riwayat/mutasi'], 'permission' => 'riwayat_mutasi'],
+                                ['label' => 'Pelatihan', 'icon' => 'clipboard', 'url' => url('/kepegawaian/riwayat/pelatihan'), 'patterns' => ['kepegawaian/riwayat/pelatihan'], 'permission' => 'riwayat_pelatihan'],
+                            ],
+                        ],
+                        ['type' => 'link', 'label' => 'Jabatan Pegawai', 'icon' => 'award', 'url' => url('/kepegawaian/jabatan'), 'patterns' => ['kepegawaian/jabatan'], 'permission' => 'jabatan'],
+                        [
+                            'type' => 'collapse',
+                            'id' => 'legalitasSubmenu',
+                            'label' => 'Legalitas',
+                            'icon' => 'shield',
+                            'permission' => 'legalitas_sip',
+                            'patterns' => ['kepegawaian/legalitas/sip', 'kepegawaian/legalitas/str'],
+                            'children' => [
+                                ['label' => 'SIP', 'icon' => 'file-text', 'url' => url('/kepegawaian/legalitas/sip'), 'patterns' => ['kepegawaian/legalitas/sip'], 'permission' => 'legalitas_sip'],
+                                ['label' => 'STR', 'icon' => 'file', 'url' => url('/kepegawaian/legalitas/str'), 'patterns' => ['kepegawaian/legalitas/str'], 'permission' => 'legalitas_str'],
+                            ],
+                        ],
+                    ],
+                ],
+                [
+                    'header' => 'Pengajuan',
+                    'items' => [
+                        ['type' => 'link', 'label' => 'Pengajuan', 'icon' => 'file-plus', 'url' => url('/pengajuan'), 'patterns' => ['pengajuan'], 'permission' => 'pengajuan'],
+                    ],
+                ],
+                [
+                    'header' => 'Pengaduan',
+                    'items' => [
+                        ['type' => 'link', 'label' => 'Pengaduan', 'icon' => 'message-circle', 'url' => url('/pengaduan/pengaduan'), 'patterns' => ['pengaduan/pengaduan'], 'permission' => 'pengaduan_data'],
+                    ],
+                ],
+                [
+                    'header' => 'Pengguna',
+                    'adminOnly' => true,
+                    'items' => [
+                        ['type' => 'link', 'label' => 'Pengguna', 'icon' => 'users', 'url' => url('/pengguna'), 'patterns' => ['pengguna']],
+                        ['type' => 'link', 'label' => 'Peran', 'icon' => 'user-check', 'url' => url('/peran-pengguna'), 'patterns' => ['peran-pengguna']],
+                        ['type' => 'link', 'label' => 'Hak Akses', 'icon' => 'shield', 'url' => url('/hak-akses'), 'patterns' => ['hak-akses']],
+                    ],
+                ],
+                [
+                    'header' => 'Master Data',
+                    'items' => [
+                        ['type' => 'link', 'label' => 'IP Address', 'icon' => 'map-pin', 'url' => route('ipaddr.index'), 'patterns' => ['ip-address'], 'permission' => 'ip_address'],
+                        ['type' => 'link', 'label' => 'Perangkat', 'icon' => 'server', 'url' => route('device.index'), 'patterns' => ['perangkat'], 'permission' => 'perangkat'],
+                        ['type' => 'link', 'label' => 'ISP', 'icon' => 'globe', 'url' => url('/isp'), 'patterns' => ['isp'], 'permission' => 'isp'],
+                        ['type' => 'link', 'label' => 'CCTV', 'icon' => 'video', 'url' => url('/cctv'), 'patterns' => ['cctv'], 'permission' => 'cctv'],
+                        ['type' => 'link', 'label' => 'Ruangan', 'icon' => 'layout', 'url' => url('/ruangan'), 'patterns' => ['ruangan*'], 'permission' => 'ruangan'],
+                        ['type' => 'link', 'label' => 'PJ Ruangan', 'icon' => 'user-check', 'url' => url('/pj-ruangan'), 'patterns' => ['pj-ruangan*'], 'permission' => 'pj_ruangan'],
+                        ['type' => 'link', 'label' => 'Peran', 'icon' => 'shield', 'url' => url('/roles'), 'patterns' => ['roles*'], 'permission' => 'roles'],
+                    ],
+                ],
+                [
+                    'header' => 'Setting',
+                    'adminOnly' => true,
+                    'items' => [
+                        ['type' => 'link', 'label' => 'WA Gateway', 'icon' => 'message-square', 'url' => url('/whatsapp-gateway'), 'patterns' => ['whatsapp-gateway']],
+                        ['type' => 'link', 'label' => 'Log Aktivitas', 'icon' => 'activity', 'url' => url('/logs'), 'patterns' => ['logs']],
+                    ],
+                ],
+                [
+                    'header' => 'Laporan',
+                    'items' => [
+                        ['type' => 'link', 'label' => 'Laporan', 'icon' => 'clipboard', 'url' => url('/laporan'), 'patterns' => ['laporan'], 'permission' => 'laporan'],
+                    ],
+                ],
+                [
+                    'header' => 'Keluar',
+                    'items' => [
+                        ['type' => 'logout', 'label' => 'Keluar', 'icon' => 'log-out', 'url' => route('logout'), 'patterns' => []],
+                    ],
+                ],
+            ];
+        @endphp
 
-			<li class="sidebar-item {{ request()->is('isp') ? 'active' : '' }}">
-				@if($canMenu('isp') && $showMenu('isp'))
-					<a class="sidebar-link" href="{{ url('isp') }}">
-						<i class="align-middle" data-feather="globe"></i>
-						<span class="align-middle">ISP</span>
-					</a>
-				@endif
-			</li>
+        <ul class="sidebar-nav">
+            @foreach ($sections as $section)
+                @if (!empty($section['adminOnly']) && !$canAccess(null, true))
+                    @continue
+                @endif
 
-			@php
-				$pegawaiActive = request()->is('kepegawaian/data-pegawai')
-					|| request()->is('kepegawaian/pns')
-					|| request()->is('kepegawaian/pppk');
-			@endphp
-			<li class="sidebar-item {{ $pegawaiActive ? 'active' : '' }}">
-				@if($canMenu('data_pegawai') && $showMenu('data_pegawai'))
-					<a class="sidebar-link {{ $pegawaiActive ? '' : 'collapsed' }}" data-bs-toggle="collapse" href="#pegawaiSubmenu" role="button" aria-expanded="{{ $pegawaiActive ? 'true' : 'false' }}" aria-controls="pegawaiSubmenu">
-						<i class="align-middle" data-feather="users"></i>
-						<span class="align-middle">Data Pegawai</span>
-					</a>
-					<ul id="pegawaiSubmenu" class="sidebar-dropdown list-unstyled collapse {{ $pegawaiActive ? 'show' : '' }}">
-						<li class="sidebar-item {{ request()->is('kepegawaian/pns') ? 'active' : '' }}">
-							@if($canMenu('pegawai_pns') && $showMenu('pegawai_pns'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/pns') }}">
-									<i class="align-middle" data-feather="user-check"></i>
-									<span class="align-middle">PNS</span>
-								</a>
-							@endif
-						</li>
-						<li class="sidebar-item {{ request()->is('kepegawaian/pppk') ? 'active' : '' }}">
-							@if($canMenu('pegawai_pppk') && $showMenu('pegawai_pppk'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/pppk') }}">
-									<i class="align-middle" data-feather="user-plus"></i>
-									<span class="align-middle">PPPK</span>
-								</a>
-							@endif
-						</li>
-					</ul>
-				@endif
-			</li>
+                @php
+                    $renderItems = [];
+                    foreach ($section['items'] as $item) {
+                        if (!$canAccess($item['permission'] ?? null)) {
+                            continue;
+                        }
 
-			@php
-				$riwayatActive = request()->is('kepegawaian/riwayat')
-					|| request()->is('kepegawaian/riwayat/pendidikan')
-					|| request()->is('kepegawaian/riwayat/pangkat-golongan')
-					|| request()->is('kepegawaian/riwayat/mutasi')
-					|| request()->is('kepegawaian/riwayat/pelatihan');
-			@endphp
-			<li class="sidebar-item {{ $riwayatActive ? 'active' : '' }}">
-				@if($canMenu('riwayat_pegawai') && $showMenu('riwayat_pegawai'))
-					<a class="sidebar-link {{ $riwayatActive ? '' : 'collapsed' }}" data-bs-toggle="collapse" href="#riwayatSubmenu" role="button" aria-expanded="{{ $riwayatActive ? 'true' : 'false' }}" aria-controls="riwayatSubmenu">
-						<i class="align-middle" data-feather="clock"></i>
-						<span class="align-middle">Riwayat Pegawai</span>
-					</a>
-					<ul id="riwayatSubmenu" class="sidebar-dropdown list-unstyled collapse {{ $riwayatActive ? 'show' : '' }}">
-						<li class="sidebar-item {{ request()->is('kepegawaian/riwayat/pendidikan') ? 'active' : '' }}">
-							@if($canMenu('riwayat_pendidikan') && $showMenu('riwayat_pendidikan'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/riwayat/pendidikan') }}">
-									<i class="align-middle" data-feather="book-open"></i>
-									<span class="align-middle">Pendidikan</span>
-								</a>
-							@endif
-						</li>
-						<li class="sidebar-item {{ request()->is('kepegawaian/riwayat/pangkat-golongan') ? 'active' : '' }}">
-							@if($canMenu('riwayat_pangkat') && $showMenu('riwayat_pangkat'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/riwayat/pangkat-golongan') }}">
-									<i class="align-middle" data-feather="trending-up"></i>
-									<span class="align-middle">Pangkat / Golongan</span>
-								</a>
-							@endif
-						</li>
-						<li class="sidebar-item {{ request()->is('kepegawaian/riwayat/mutasi') ? 'active' : '' }}">
-							@if($canMenu('riwayat_mutasi') && $showMenu('riwayat_mutasi'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/riwayat/mutasi') }}">
-									<i class="align-middle" data-feather="shuffle"></i>
-									<span class="align-middle">Mutasi</span>
-								</a>
-							@endif
-						</li>
-						<li class="sidebar-item {{ request()->is('kepegawaian/riwayat/pelatihan') ? 'active' : '' }}">
-							@if($canMenu('riwayat_pelatihan') && $showMenu('riwayat_pelatihan'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/riwayat/pelatihan') }}">
-									<i class="align-middle" data-feather="clipboard"></i>
-									<span class="align-middle">Pelatihan</span>
-								</a>
-							@endif
-						</li>
-					</ul>
-				@endif
-			</li>
+                        if (($item['type'] ?? 'link') === 'collapse') {
+                            $children = [];
+                            foreach (($item['children'] ?? []) as $child) {
+                                if ($canAccess($child['permission'] ?? null)) {
+                                    $children[] = $child;
+                                }
+                            }
 
-			<li class="sidebar-item {{ request()->is('kepegawaian/jabatan') ? 'active' : '' }}">
-				@if($canMenu('jabatan') && $showMenu('jabatan'))
-					<a class="sidebar-link" href="{{ url('/kepegawaian/jabatan') }}">
-						<i class="align-middle" data-feather="award"></i>
-						<span class="align-middle">Jabatan Pegawai</span>
-					</a>
-				@endif
-			</li>
+                            if (empty($children)) {
+                                continue;
+                            }
 
-			@php
-				$legalitasActive = request()->is('kepegawaian/legalitas/sip')
-					|| request()->is('kepegawaian/legalitas/str');
-			@endphp
-			<li class="sidebar-item {{ $legalitasActive ? 'active' : '' }}">
-				@if($canMenu('legalitas_sip') && $showMenu('legalitas_sip'))
-					<a class="sidebar-link {{ $legalitasActive ? '' : 'collapsed' }}" data-bs-toggle="collapse" href="#legalitasSubmenu" role="button" aria-expanded="{{ $legalitasActive ? 'true' : 'false' }}" aria-controls="legalitasSubmenu">
-						<i class="align-middle" data-feather="shield"></i>
-						<span class="align-middle">Legalitas</span>
-					</a>
-					<ul id="legalitasSubmenu" class="sidebar-dropdown list-unstyled collapse {{ $legalitasActive ? 'show' : '' }}">
-						<li class="sidebar-item {{ request()->is('kepegawaian/legalitas/sip') ? 'active' : '' }}">
-							@if($canMenu('legalitas_sip') && $showMenu('legalitas_sip'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/legalitas/sip') }}">
-									<i class="align-middle" data-feather="file-text"></i>
-									<span class="align-middle">SIP</span>
-								</a>
-							@endif
-						</li>
-						<li class="sidebar-item {{ request()->is('kepegawaian/legalitas/str') ? 'active' : '' }}">
-							@if($canMenu('legalitas_str') && $showMenu('legalitas_str'))
-								<a class="sidebar-link" href="{{ url('/kepegawaian/legalitas/str') }}">
-									<i class="align-middle" data-feather="file"></i>
-									<span class="align-middle">STR</span>
-								</a>
-							@endif
-						</li>
-					</ul>
-				@endif
-			</li>
+                            $item['children'] = $children;
+                        }
 
-			<li class="sidebar-item {{ request()->is('persuratan/surat-masuk') ? 'active' : '' }}">
-				@if($canMenu('surat_masuk') && $showMenu('surat_masuk'))
-					<a class="sidebar-link" href="{{ url('/persuratan/surat-masuk') }}">
-						<i class="align-middle" data-feather="inbox"></i>
-						<span class="align-middle">Surat Masuk</span>
-					</a>
-				@endif
-			</li>
+                        $renderItems[] = $item;
+                    }
+                @endphp
 
-			<li class="sidebar-item {{ request()->is('persuratan/surat-keluar') ? 'active' : '' }}">
-				@if($canMenu('surat_keluar') && $showMenu('surat_keluar'))
-					<a class="sidebar-link" href="{{ url('/persuratan/surat-keluar') }}">
-						<i class="align-middle" data-feather="send"></i>
-						<span class="align-middle">Surat Keluar</span>
-					</a>
-				@endif
-			</li>
+                @if (empty($renderItems))
+                    @continue
+                @endif
 
-			<li class="sidebar-item {{ request()->is('persuratan/disposisi') ? 'active' : '' }}">
-				@if($canMenu('disposisi') && $showMenu('disposisi'))
-					<a class="sidebar-link" href="{{ url('/persuratan/disposisi') }}">
-						<i class="align-middle" data-feather="corner-up-right"></i>
-						<span class="align-middle">Disposisi</span>
-					</a>
-				@endif
-			</li>
+                <li class="sidebar-header">{{ $section['header'] }}</li>
 
-			<li class="sidebar-item {{ request()->is('persuratan/arsip-surat') ? 'active' : '' }}">
-				@if($canMenu('arsip_surat') && $showMenu('arsip_surat'))
-					<a class="sidebar-link" href="{{ url('/persuratan/arsip-surat') }}">
-						<i class="align-middle" data-feather="archive"></i>
-						<span class="align-middle">Arsip Surat</span>
-					</a>
-				@endif
-			</li>
+                @foreach ($renderItems as $item)
+                    @php
+                        $type = $item['type'] ?? 'link';
+                        $active = $isActive($item['patterns'] ?? []);
+                    @endphp
 
-			<li class="sidebar-item {{ request()->is('pengaduan/pengaduan') ? 'active' : '' }}">
-				@if($canMenu('pengaduan_data') && $showMenu('pengaduan_data'))
-					<a class="sidebar-link" href="{{ url('/pengaduan/pengaduan') }}">
-						<i class="align-middle" data-feather="message-circle"></i>
-						<span class="align-middle">Pengaduan</span>
-					</a>
-				@endif
-			</li>
+                    @if ($type === 'collapse')
+                        <li class="sidebar-item {{ $active ? 'active' : '' }}">
+                            <a class="sidebar-link {{ $active ? '' : 'collapsed' }}"
+                               data-bs-toggle="collapse"
+                               href="#{{ $item['id'] }}"
+                               role="button"
+                               aria-expanded="{{ $active ? 'true' : 'false' }}"
+                               aria-controls="{{ $item['id'] }}">
+                                <i class="align-middle" data-feather="{{ $item['icon'] }}"></i>
+                                <span class="align-middle">{{ $item['label'] }}</span>
+                            </a>
 
-			<li class="sidebar-item {{ request()->is('pengajuan') ? 'active' : '' }}">
-				@if($canMenu('pengajuan') && $showMenu('pengajuan'))
-					<a class="sidebar-link" href="{{ url('/pengajuan') }}">
-						<i class="align-middle" data-feather="file-plus"></i>
-						<span class="align-middle">Pengajuan</span>
-					</a>
-				@endif
-			</li>
-
-
-			<li class="sidebar-item {{ request()->is('cctv') ? 'active' : '' }}">
-				@if($canMenu('cctv') && $showMenu('cctv'))
-					<a class="sidebar-link" href="{{ url('cctv') }}">
-						<i class="align-middle" data-feather="video"></i>
-						<span class="align-middle">CCTV</span>
-					</a>
-				@endif
-			</li>
-
-
-
-			
-
-			<li class="sidebar-item {{ request()->is('ruangan*') ? 'active' : '' }}">
-				@if($canMenu('ruangan') && $showMenu('ruangan'))
-					<a class="sidebar-link" href="{{ url('/ruangan') }}">
-						<i class="align-middle" data-feather="layout"></i>
-						<span class="align-middle">Ruangan</span>
-					</a>
-				@endif
-			</li>
-			<li class="sidebar-item {{ request()->is('pj-ruangan') ? 'active' : '' }}">
-				@if($canMenu('pj_ruangan') && $showMenu('pj_ruangan'))
-					<a class="sidebar-link" href="{{ url('/pj-ruangan') }}">
-						<i class="align-middle" data-feather="user-check"></i>
-						<span class="align-middle">PJ Ruangan</span>
-					</a>
-				@endif
-			</li>
-			<li class="sidebar-item {{ request()->is('jabatan*') ? 'active' : '' }}">
-				@if($canMenu('jabatan') && $showMenu('jabatan'))
-					<a class="sidebar-link" href="{{ url('/jabatan') }}">
-						<i class="align-middle" data-feather="award"></i>
-						<span class="align-middle">Jabatan</span>
-					</a>
-				@endif
-			</li>
-			<li class="sidebar-item {{ request()->is('roles*') ? 'active' : '' }}">
-				@if($canMenu('roles') && $showMenu('roles'))
-					<a class="sidebar-link" href="{{ url('/roles') }}">
-						<i class="align-middle" data-feather="shield"></i>
-						<span class="align-middle">Peran</span>
-					</a>
-				@endif
-			</li>
-
-			@if(auth()->check() && (auth()->user()->is_admin ?? false))
-				@if($showMenu('pengguna'))
-					<li class="sidebar-item {{ request()->is('pengguna') ? 'active' : '' }}">
-						<a class="sidebar-link" href="{{ url('/pengguna') }}">
-							<i class="align-middle" data-feather="users"></i>
-							<span class="align-middle">Pengguna</span>
-						</a>
-					</li>
-				@endif
-				@if($showMenu('peran_pengguna'))
-					<li class="sidebar-item {{ request()->is('peran-pengguna') ? 'active' : '' }}">
-						<a class="sidebar-link" href="{{ url('/peran-pengguna') }}">
-							<i class="align-middle" data-feather="user-check"></i>
-							<span class="align-middle">Peran</span>
-						</a>
-					</li>
-				@endif
-				@if($showMenu('hak_akses'))
-					<li class="sidebar-item {{ request()->is('hak-akses') ? 'active' : '' }}">
-						<a class="sidebar-link" href="{{ url('/hak-akses') }}">
-							<i class="align-middle" data-feather="shield"></i>
-							<span class="align-middle">Hak Akses</span>
-						</a>
-					</li>
-				@endif
-			@endif
-			
-			<li class="sidebar-item {{ request()->is('helpdesk') ? 'active' : '' }}">
-				@if($canMenu('helpdesk') && $showMenu('helpdesk'))
-					<a class="sidebar-link" href="{{ url('/helpdesk') }}">
-						<i class="align-middle" data-feather="message-circle"></i>
-						<span class="align-middle">Tiket</span>
-					</a>
-				@endif
-			</li>
-
-			@if(auth()->check() && (auth()->user()->is_admin ?? false))
-				@if($showMenu('wa_gateway'))
-					<li class="sidebar-item {{ request()->is('whatsapp-gateway') ? 'active' : '' }}">
-						<a class="sidebar-link" href="{{ url('whatsapp-gateway') }}">
-							<i class="align-middle" data-feather="message-square"></i>
-							<span class="align-middle">WA Gateway</span>
-						</a>
-					</li>
-				@endif
-				@if($showMenu('log_aktivitas'))
-					<li class="sidebar-item {{ request()->is('logs') ? 'active' : '' }}">
-						<a class="sidebar-link" href="{{ url('/logs') }}">
-							<i class="align-middle" data-feather="activity"></i>
-							<span class="align-middle">Log Aktivitas</span>
-						</a>
-					</li>
-				@endif
-			@endif
-			
-			<li class="sidebar-item {{ request()->is('laporan') ? 'active' : '' }}">
-				@if($canMenu('laporan') && $showMenu('laporan'))
-					<a class="sidebar-link" href="{{ url('laporan') }}">
-						<i class="align-middle" data-feather="clipboard"></i>
-						<span class="align-middle">Laporan</span>
-					</a>
-				@endif
-			</li>
-			@endif
-
-                @auth
-					@if(!$isProfileApp)
-					<li class="sidebar-item">
-						<a class="sidebar-link" href="{{ url('/apps') }}">
-							<i class="align-middle" data-feather="grid"></i>
-							<span class="align-middle">Kembali</span>
-						</a>
-					</li>
-					@endif
-                @endauth
-            </ul>
-	</div>
+                            <ul id="{{ $item['id'] }}" class="sidebar-dropdown list-unstyled collapse {{ $active ? 'show' : '' }}">
+                                @foreach ($item['children'] as $child)
+                                    <li class="sidebar-item {{ $isActive($child['patterns'] ?? []) ? 'active' : '' }}">
+                                        <a class="sidebar-link" href="{{ $child['url'] }}">
+                                            <i class="align-middle" data-feather="{{ $child['icon'] }}"></i>
+                                            <span class="align-middle">{{ $child['label'] }}</span>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </li>
+                    @elseif ($type === 'logout')
+                        <li class="sidebar-item">
+                            <form method="POST" action="{{ $item['url'] }}" class="m-0 p-0">
+                                @csrf
+                                <button type="submit" class="sidebar-link border-0 bg-transparent w-100 text-start">
+                                    <i class="align-middle" data-feather="{{ $item['icon'] }}"></i>
+                                    <span class="align-middle">{{ $item['label'] }}</span>
+                                </button>
+                            </form>
+                        </li>
+                    @else
+                        <li class="sidebar-item {{ $active ? 'active' : '' }}">
+                            <a class="sidebar-link" href="{{ $item['url'] }}">
+                                <i class="align-middle" data-feather="{{ $item['icon'] }}"></i>
+                                <span class="align-middle">{{ $item['label'] }}</span>
+                            </a>
+                        </li>
+                    @endif
+                @endforeach
+            @endforeach
+        </ul>
+    </div>
 </nav>

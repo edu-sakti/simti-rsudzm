@@ -242,10 +242,6 @@ Route::get('/logs', function () {
     return view('logs.index');
 })->middleware(['auth', 'permission:log_aktivitas,read']);
 
-Route::get('/apps', function () {
-    return view('apps');
-})->name('apps')->middleware('auth');
-
 Route::get('/api/wilayah/{type}/{id?}', function (string $type, ?string $id = null) {
     $allowed = ['provinces', 'regencies', 'districts', 'villages'];
     if (!in_array($type, $allowed, true)) {
@@ -266,92 +262,6 @@ Route::get('/api/wilayah/{type}/{id?}', function (string $type, ?string $id = nu
     } catch (\Throwable $e) {
         return response()->json(['data' => ['data' => []]], 500);
     }
-})->middleware('auth');
-
-Route::get('/apps/launch/{app}', function (Request $request, string $app) {
-    $app = strtolower($app);
-    if (in_array($app, ['inventaris', 'jaringan', 'monitoring'], true)) {
-        $app = 'master-data';
-    }
-    if (in_array($app, ['manajemen-pengguna', 'pengguna'], true)) {
-        $app = 'manajemen-pengguna';
-    }
-    if ($app === 'setting') {
-        $app = 'integrasi';
-    }
-
-    $request->session()->put('active_app', $app);
-    return redirect('/dashboard');
-    $apps = [
-        'helpdesk' => [
-            ['menu' => 'dashboard', 'url' => url('/dashboard')],
-            ['menu' => 'helpdesk', 'url' => url('/helpdesk')],
-            ['menu' => 'laporan', 'url' => url('/laporan')],
-        ],
-        'master-data' => [
-            ['menu' => 'perangkat', 'url' => url('/perangkat')],
-            ['menu' => 'ruangan', 'url' => url('/ruangan')],
-            ['menu' => 'pj_ruangan', 'url' => url('/pj-ruangan')],
-            ['menu' => 'roles', 'url' => url('/roles')],
-            ['menu' => 'ip_address', 'url' => url('/ip-address')],
-            ['menu' => 'isp', 'url' => url('/isp')],
-            ['menu' => 'cctv', 'url' => url('/cctv')],
-        ],
-        'persuratan' => [
-            ['menu' => 'surat_masuk', 'url' => url('/persuratan/surat-masuk')],
-            ['menu' => 'surat_keluar', 'url' => url('/persuratan/surat-keluar')],
-            ['menu' => 'disposisi', 'url' => url('/persuratan/disposisi')],
-            ['menu' => 'arsip_surat', 'url' => url('/persuratan/arsip-surat')],
-        ],
-        'pengaduan' => [
-            ['menu' => 'pengaduan_data', 'url' => url('/pengaduan/pengaduan')],
-        ],
-        'kepegawaian' => [
-            ['menu' => 'data_pegawai', 'url' => url('/kepegawaian/data-pegawai')],
-            ['menu' => 'pegawai_pns', 'url' => url('/kepegawaian/pns')],
-            ['menu' => 'pegawai_pppk', 'url' => url('/kepegawaian/pppk')],
-            ['menu' => 'jabatan', 'url' => url('/kepegawaian/jabatan')],
-            ['menu' => 'riwayat_pegawai', 'url' => url('/kepegawaian/riwayat')],
-            ['menu' => 'riwayat_pendidikan', 'url' => url('/kepegawaian/riwayat/pendidikan')],
-            ['menu' => 'riwayat_pangkat', 'url' => url('/kepegawaian/riwayat/pangkat-golongan')],
-            ['menu' => 'riwayat_mutasi', 'url' => url('/kepegawaian/riwayat/mutasi')],
-            ['menu' => 'riwayat_pelatihan', 'url' => url('/kepegawaian/riwayat/pelatihan')],
-            ['menu' => 'legalitas_sip', 'url' => url('/kepegawaian/legalitas/sip')],
-            ['menu' => 'legalitas_str', 'url' => url('/kepegawaian/legalitas/str')],
-        ],
-        'manajemen-pengguna' => [
-            ['menu' => 'profil', 'url' => url('/profile'), 'admin_only' => true],
-            ['menu' => 'pengguna', 'url' => url('/pengguna'), 'admin_only' => true],
-            ['menu' => 'peran_pengguna', 'url' => url('/peran-pengguna'), 'admin_only' => true],
-            ['menu' => 'hak_akses', 'url' => url('/hak-akses'), 'admin_only' => true],
-        ],
-        'integrasi' => [
-            ['menu' => 'wa_gateway', 'url' => url('/whatsapp-gateway'), 'admin_only' => true],
-            ['menu' => 'log_aktivitas', 'url' => url('/logs'), 'admin_only' => true],
-        ],
-    ];
-
-    if (!isset($apps[$app])) {
-        abort(404);
-    }
-
-    $user = auth()->user();
-    $isAdmin = (bool) ($user->is_admin ?? false);
-    $can = function (string $menu) use ($user) {
-        return \App\Support\Permission::can($user, $menu, 'read');
-    };
-
-    foreach ($apps[$app] as $item) {
-        if (($item['admin_only'] ?? false) && !$isAdmin) {
-            continue;
-        }
-        if ($isAdmin || $can($item['menu'])) {
-            $request->session()->put('active_app', $app);
-            return redirect()->to($item['url']);
-        }
-    }
-
-    return redirect()->route('apps')->with('error', 'Anda tidak memiliki akses ke aplikasi tersebut.');
 })->middleware('auth');
 
 $roomCategories = [
@@ -392,53 +302,62 @@ if (!function_exists('hakAksesMenuGroups')) {
             'Umum' => [
                 ['key' => 'dashboard', 'label' => 'Dashboard', 'actions' => ['read']],
                 ['key' => 'laporan', 'label' => 'Laporan', 'actions' => ['read']],
-                ['key' => 'logout', 'label' => 'Logout', 'actions' => ['read']],
+                ['key' => 'logout', 'label' => 'Keluar', 'actions' => ['read']],
+            ],
+            'Profil' => [
+                ['key' => 'profil', 'label' => 'Profil', 'actions' => ['read', 'update']],
+                ['key' => 'profil_data_pribadi', 'label' => 'Data Pribadi', 'actions' => ['read', 'update']],
+                ['key' => 'profil_kontak_darurat', 'label' => 'Kontak Darurat', 'actions' => ['read', 'update']],
+                ['key' => 'profil_riwayat', 'label' => 'Riwayat', 'actions' => ['read']],
+                ['key' => 'profil_riwayat_pendidikan', 'label' => 'Riwayat Pendidikan', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'profil_riwayat_kerja', 'label' => 'Riwayat Kerja', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'profil_keprofesian', 'label' => 'Keprofesian', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'profil_data_pendukung', 'label' => 'Data Pendukung', 'actions' => ['read', 'create', 'update', 'delete']],
             ],
             'Helpdesk' => [
-                ['key' => 'helpdesk', 'label' => 'Tiket', 'actions' => ['read','create','update','delete']],
+                ['key' => 'helpdesk', 'label' => 'Tiket', 'actions' => ['read', 'create', 'update', 'delete']],
             ],
             'Persuratan' => [
-                ['key' => 'surat_masuk', 'label' => 'Surat Masuk', 'actions' => ['read','create','update','delete']],
-                ['key' => 'surat_keluar', 'label' => 'Surat Keluar', 'actions' => ['read','create','update','delete']],
-                ['key' => 'disposisi', 'label' => 'Disposisi', 'actions' => ['read','create','update','delete']],
-                ['key' => 'arsip_surat', 'label' => 'Arsip Surat', 'actions' => ['read','create','update','delete']],
-            ],
-            'Pengaduan' => [
-                ['key' => 'pengaduan_data', 'label' => 'Pengaduan', 'actions' => ['read','create','update','delete']],
-            ],
-            'Pengajuan' => [
-                ['key' => 'pengajuan', 'label' => 'Pengajuan', 'actions' => ['read','create','update','delete']],
-            ],
-            'Master Data' => [
-                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read','create','update','delete']],
-                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read','create','update','delete']],
-                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read','create','update','delete']],
-                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read','create','update','delete']],
-                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'pj_ruangan', 'label' => 'PJ Ruangan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'roles', 'label' => 'Peran', 'actions' => ['read','create','update','delete']],
+                ['key' => 'surat_masuk', 'label' => 'Surat Masuk', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'surat_keluar', 'label' => 'Surat Keluar', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'disposisi', 'label' => 'Disposisi', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'arsip_surat', 'label' => 'Arsip Surat', 'actions' => ['read', 'create', 'update', 'delete']],
             ],
             'Kepegawaian' => [
-                ['key' => 'data_pegawai', 'label' => 'Data Pegawai', 'actions' => ['read','create','update','delete']],
-                ['key' => 'pegawai_pns', 'label' => 'PNS', 'actions' => ['read','create','update','delete']],
-                ['key' => 'pegawai_pppk', 'label' => 'PPPK', 'actions' => ['read','create','update','delete']],
-                ['key' => 'jabatan', 'label' => 'Jabatan Pegawai', 'actions' => ['read','create','update','delete']],
-                ['key' => 'riwayat_pegawai', 'label' => 'Riwayat Pegawai', 'actions' => ['read','create','update','delete']],
-                ['key' => 'riwayat_pendidikan', 'label' => 'Pendidikan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'riwayat_pangkat', 'label' => 'Pangkat / Golongan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'riwayat_mutasi', 'label' => 'Mutasi', 'actions' => ['read','create','update','delete']],
-                ['key' => 'riwayat_pelatihan', 'label' => 'Pelatihan', 'actions' => ['read','create','update','delete']],
-                ['key' => 'legalitas_sip', 'label' => 'SIP', 'actions' => ['read','create','update','delete']],
-                ['key' => 'legalitas_str', 'label' => 'STR', 'actions' => ['read','create','update','delete']],
+                ['key' => 'data_pegawai', 'label' => 'Data Pegawai', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'pegawai_pns', 'label' => 'PNS', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'pegawai_pppk', 'label' => 'PPPK', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'riwayat_pegawai', 'label' => 'Riwayat Pegawai', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'riwayat_pendidikan', 'label' => 'Pendidikan', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'riwayat_pangkat', 'label' => 'Pangkat / Golongan', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'riwayat_mutasi', 'label' => 'Mutasi', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'riwayat_pelatihan', 'label' => 'Pelatihan', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'jabatan', 'label' => 'Jabatan Pegawai', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'legalitas_sip', 'label' => 'SIP', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'legalitas_str', 'label' => 'STR', 'actions' => ['read', 'create', 'update', 'delete']],
+            ],
+            'Pengajuan' => [
+                ['key' => 'pengajuan', 'label' => 'Pengajuan', 'actions' => ['read', 'create', 'update', 'delete']],
+            ],
+            'Pengaduan' => [
+                ['key' => 'pengaduan_data', 'label' => 'Pengaduan', 'actions' => ['read', 'create', 'update', 'delete']],
             ],
             'Pengguna' => [
-                ['key' => 'profil', 'label' => 'Profil', 'actions' => ['read','update']],
-                ['key' => 'pengguna', 'label' => 'Pengguna', 'actions' => ['read','create','update','delete']],
-                ['key' => 'peran_pengguna', 'label' => 'Peran Pengguna', 'actions' => ['read','create','update','delete']],
-                ['key' => 'hak_akses', 'label' => 'Hak Akses', 'actions' => ['read','update']],
+                ['key' => 'pengguna', 'label' => 'Pengguna', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'peran_pengguna', 'label' => 'Peran', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'hak_akses', 'label' => 'Hak Akses', 'actions' => ['read', 'update']],
+            ],
+            'Master Data' => [
+                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'pj_ruangan', 'label' => 'PJ Ruangan', 'actions' => ['read', 'create', 'update', 'delete']],
+                ['key' => 'roles', 'label' => 'Peran', 'actions' => ['read', 'create', 'update', 'delete']],
             ],
             'Setting' => [
-                ['key' => 'wa_gateway', 'label' => 'WA Gateway', 'actions' => ['read','update']],
+                ['key' => 'wa_gateway', 'label' => 'WA Gateway', 'actions' => ['read', 'update']],
                 ['key' => 'log_aktivitas', 'label' => 'Log Aktivitas', 'actions' => ['read']],
             ],
         ];
@@ -544,7 +463,7 @@ Route::post('/peran', function (Request $request) {
             ->withErrors(['user_id' => 'Pengguna sudah memiliki peran. Silakan ubah pada form edit.']);
     }
 
-    $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')));
+    $roleName = Str::slug(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')), '-');
     $needsRoom = in_array($roleName, ['kepala', 'petugas'], true);
     if ($needsRoom) {
         $request->validate([
@@ -625,7 +544,7 @@ Route::get('/peran/{token}/edit', function (string $token) {
         ->orderBy('name')
         ->get();
     $selectedRoomId = null;
-    $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $peran->role_id)->value('name')));
+    $roleName = Str::slug(trim((string) DB::table('roles')->where('id', $peran->role_id)->value('name')), '-');
     if (in_array($roleName, ['kepala', 'petugas'], true)) {
         $selectedRoomId = DB::table('room_users')
             ->where('user_id', $peran->user_id)
@@ -644,7 +563,7 @@ Route::put('/peran/{id}', function (Request $request, string $id) {
         'user_id.in' => 'Pengguna pada data ini tidak bisa diubah. Silakan edit peran pengguna yang sesuai.',
     ]);
 
-    $roleName = Str::lower(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')));
+    $roleName = Str::slug(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')), '-');
     $needsRoom = in_array($roleName, ['kepala', 'petugas'], true);
     if ($needsRoom) {
         $request->validate([
@@ -1116,9 +1035,10 @@ Route::get('/ruangan', function (Request $request) use ($roomCategories) {
 
 Route::get('/pj-ruangan', function (Request $request) {
     $search = $request->query('q');
-    $entries = DB::table('room_petugas as rp')
-        ->leftJoin('users as u', 'u.id', '=', 'rp.user_id')
-        ->leftJoin('rooms as r', 'r.id', '=', 'rp.room_id')
+    $entries = DB::table('room_users as ru')
+        ->leftJoin('users as u', 'u.id', '=', 'ru.user_id')
+        ->leftJoin('rooms as r', 'r.id', '=', 'ru.room_id')
+        ->where('ru.role', 'petugas-it')
         ->when($search, function ($query, $search) {
             $query->where('u.name', 'like', "%{$search}%")
                 ->orWhere('u.username', 'like', "%{$search}%")
@@ -1126,14 +1046,14 @@ Route::get('/pj-ruangan', function (Request $request) {
                 ->orWhere('r.room_id', 'like', "%{$search}%");
         })
         ->select([
-            'rp.id',
-            'rp.description',
+            'ru.id',
+            'ru.description',
             'u.name as user_name',
             'u.username',
             'r.name as room_name',
             'r.room_id',
         ])
-        ->orderBy('rp.id', 'desc')
+        ->orderBy('ru.id', 'desc')
         ->paginate(20)
         ->withQueryString();
 
@@ -1160,20 +1080,22 @@ Route::post('/pj-ruangan', function (Request $request) {
         'description' => ['nullable', 'string'],
     ]);
 
-    $existing = DB::table('room_petugas')
+    $existing = DB::table('room_users')
         ->where('user_id', $data['user_id'])
         ->where('room_id', $data['room_id'])
+        ->where('role', 'petugas-it')
         ->first();
 
     if ($existing) {
-        DB::table('room_petugas')->where('id', $existing->id)->update([
+        DB::table('room_users')->where('id', $existing->id)->update([
             'description' => $data['description'] ?? null,
             'updated_at' => now(),
         ]);
     } else {
-        DB::table('room_petugas')->insert([
+        DB::table('room_users')->insert([
             'user_id' => $data['user_id'],
             'room_id' => $data['room_id'],
+            'role' => 'petugas-it',
             'description' => $data['description'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
@@ -1194,7 +1116,10 @@ Route::get('/pj-ruangan/{token}/edit', function (string $token) {
         abort(404);
     }
 
-    $entry = DB::table('room_petugas')->where('id', $id)->first();
+    $entry = DB::table('room_users')
+        ->where('id', $id)
+        ->where('role', 'petugas-it')
+        ->first();
     if (!$entry) {
         abort(404);
     }
@@ -1218,7 +1143,10 @@ Route::put('/pj-ruangan/{token}', function (Request $request, string $token) {
         abort(404);
     }
 
-    $entry = DB::table('room_petugas')->where('id', $id)->first();
+    $entry = DB::table('room_users')
+        ->where('id', $id)
+        ->where('role', 'petugas-it')
+        ->first();
     if (!$entry) {
         abort(404);
     }
@@ -1229,9 +1157,10 @@ Route::put('/pj-ruangan/{token}', function (Request $request, string $token) {
         'description' => ['nullable', 'string'],
     ]);
 
-    DB::table('room_petugas')->where('id', $id)->update([
+    DB::table('room_users')->where('id', $id)->update([
         'user_id' => $data['user_id'],
         'room_id' => $data['room_id'],
+        'role' => 'petugas-it',
         'description' => $data['description'] ?? null,
         'updated_at' => now(),
     ]);
@@ -1246,7 +1175,7 @@ Route::delete('/pj-ruangan/{token}', function (string $token) {
         abort(404);
     }
 
-    DB::table('room_petugas')->where('id', $id)->delete();
+    DB::table('room_users')->where('id', $id)->delete();
 
     return redirect()->route('rooms.pj')->with('success', 'PJ Ruangan berhasil dihapus.');
 })->name('pj-ruangan.destroy')->middleware(['auth', 'permission:pj_ruangan,delete']);
@@ -1797,8 +1726,102 @@ Route::get('/helpdesk', function () {
 })->name('helpdesk.index')->middleware(['auth', 'permission:helpdesk,read']);
 
 Route::get('/helpdesk/request', function () {
-    return view('helpdesk.request');
+    $userId = auth()->id();
+
+    $rooms = DB::table('room_users as ru')
+        ->join('rooms as r', 'r.id', '=', 'ru.room_id')
+        ->where('ru.user_id', $userId)
+        ->select('r.id', 'r.name')
+        ->orderBy('r.name')
+        ->distinct()
+        ->get();
+
+    return view('helpdesk.request', [
+        'rooms' => $rooms,
+    ]);
 })->name('helpdesk.request')->middleware(['auth', 'permission:helpdesk,create']);
+
+Route::get('/helpdesk/reques', function () {
+    return redirect()->route('helpdesk.request');
+})->middleware(['auth', 'permission:helpdesk,create']);
+
+Route::post('/helpdesk/request', function (Request $request) {
+    $userId = auth()->id();
+
+    $allowedRoomIds = DB::table('room_users')
+        ->where('user_id', $userId)
+        ->pluck('room_id')
+        ->map(fn ($id) => (int) $id)
+        ->all();
+
+    $validated = $request->validate([
+        'tanggal' => ['required', 'date'],
+        'pelapor' => ['required', 'string', 'max:255'],
+        'room_id' => ['required', 'integer', Rule::in($allowedRoomIds)],
+        'kategori' => ['required', Rule::in(['hardware', 'software'])],
+        'device_id' => [
+            Rule::requiredIf(fn () => $request->input('kategori') === 'hardware'),
+            'nullable',
+            'integer',
+            'exists:devices,id',
+        ],
+        'kendala' => ['required', 'string'],
+        'prioritas' => ['required', Rule::in(['rendah', 'sedang', 'tinggi'])],
+        'keterangan' => ['nullable', 'string'],
+    ], [
+        'room_id.in' => 'Ruangan tidak sesuai dengan penempatan Anda.',
+    ]);
+
+    $room = Room::find($validated['room_id']);
+    if (!$room) {
+        return back()->withErrors(['room_id' => 'Ruangan tidak ditemukan.'])->withInput();
+    }
+
+    $deviceId = $validated['device_id'] ?? null;
+    if ($validated['kategori'] === 'hardware') {
+        $device = Device::find($deviceId);
+        if (!$device || $device->room_id !== $room->room_id) {
+            return back()->withErrors(['device_id' => 'Perangkat tidak sesuai dengan ruangan yang dipilih.'])->withInput();
+        }
+    } else {
+        $deviceId = null;
+    }
+
+    $kategoriMap = [
+        'hardware' => '1',
+        'software' => '2',
+    ];
+    $prioritasMap = [
+        'rendah' => '1',
+        'sedang' => '2',
+        'tinggi' => '3',
+    ];
+
+    $tanggal = \Carbon\Carbon::parse($validated['tanggal'])->format('dmY');
+    $roomCode = str_replace('-', '', (string) ($room->room_id ?: $validated['room_id']));
+    $deviceCode = $deviceId ? (string) $deviceId : '0';
+    $noTicket = $roomCode
+        . $tanggal
+        . $kategoriMap[$validated['kategori']]
+        . $deviceCode
+        . $prioritasMap[$validated['prioritas']];
+
+    HelpdeskTicket::create([
+        'no_ticket' => $noTicket,
+        'tanggal' => $validated['tanggal'],
+        'pelapor' => $validated['pelapor'],
+        'room_id' => $validated['room_id'],
+        'device_id' => $deviceId,
+        'kategori' => $validated['kategori'],
+        'kendala' => $validated['kendala'],
+        'prioritas' => $validated['prioritas'],
+        'petugas_id' => null,
+        'status' => 'open',
+        'keterangan' => $validated['keterangan'] ?? null,
+    ]);
+
+    return redirect('/helpdesk')->with('success', 'Request tiket berhasil dikirim.');
+})->name('helpdesk.request.store')->middleware(['auth', 'permission:helpdesk,create']);
 
 Route::get('/helpdesk/tambah-ticket', function () {
     $rooms = \App\Models\Room::query()
@@ -2545,7 +2568,6 @@ Route::delete('/perangkat/spesifikasi-perangkat/{device}', function (Device $dev
 
 // ---------------- Profile ----------------
 Route::get('/profile', function (Request $request) {
-    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     $profile = DB::table('profiles')->where('user_id', $user->id)->first();
     if (!$profile) {
@@ -2556,7 +2578,6 @@ Route::get('/profile', function (Request $request) {
 })->name('profile.home')->middleware('auth');
 
 Route::get('/profile/tambah', function (Request $request) {
-    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     $profile = DB::table('profiles')->where('user_id', $user->id)->first();
     if ($profile) {
@@ -2566,7 +2587,6 @@ Route::get('/profile/tambah', function (Request $request) {
 })->name('profile.create')->middleware('auth');
 
 Route::post('/profile', function (Request $request) {
-    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     $exists = DB::table('profiles')->where('user_id', $user->id)->exists();
     if ($exists) {
@@ -2616,12 +2636,10 @@ Route::post('/profile', function (Request $request) {
 })->name('profile.store')->middleware('auth');
 
 Route::get('/profile/{id}/edit', function (Request $request, int $id) {
-    $request->session()->put('active_app', 'profile');
     return redirect()->route('profile.edit', profile_token_encode((string) $id));
 })->whereNumber('id')->middleware('auth');
 
 Route::get('/profile/{token}/edit', function (Request $request, string $token) {
-    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     try {
         $id = profile_token_decode($token);
@@ -2639,7 +2657,6 @@ Route::get('/profile/{token}/edit', function (Request $request, string $token) {
 })->name('profile.edit')->middleware('auth');
 
 Route::put('/profile/{token}', function (Request $request, string $token) {
-    $request->session()->put('active_app', 'profile');
     $user = auth()->user();
     try {
         $id = profile_token_decode($token);
@@ -2814,7 +2831,7 @@ Route::post('/auth/otp', function (Request $request) {
     $request->session()->regenerate();
     $request->session()->forget(['otp_login_code', 'otp_login_user', 'otp_login_expires']);
 
-    return redirect()->intended('/apps');
+    return redirect()->intended('/dashboard');
 })->name('auth.otp.verify');
 
 Route::post('/auth/otp/resend', function (Request $request) {
@@ -2875,7 +2892,7 @@ Route::post('/auth/login', function (Request $request) {
         if (!filter_var(env('OTP_LOGIN_ENABLED', true), FILTER_VALIDATE_BOOLEAN)) {
             Auth::login($user);
             $request->session()->regenerate();
-            return redirect()->intended('/apps');
+            return redirect()->intended('/dashboard');
         }
 
         $length = (int) (env('OTP_LENGTH') ?: 6);
