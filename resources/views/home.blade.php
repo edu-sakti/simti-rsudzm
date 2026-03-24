@@ -1,6 +1,6 @@
 @extends('layouts.guest')
 
-@section('title', 'Selamat Datang')
+@section('title', 'SIMTI RSUDZM')
 
 @push('meta')
     <meta name="description" content="Sistem Informasi Manajemen Teknologi Informasi UPTD RSUD dr. Zubir Mahmud Idi.">
