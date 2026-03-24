@@ -44,6 +44,21 @@
               @enderror
             </div>
 
+            {{-- Email --}}
+            <div class="col-md-6">
+              <label for="email" class="form-label">Email</label>
+              <div class="input-group">
+                <input type="email" id="email" name="email" class="form-control" placeholder="Masukkan email aktif" value="{{ old('email') }}" required>
+                @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+                  <button class="btn btn-outline-primary" type="button" id="btn-email-otp">OTP Email</button>
+                @endif
+              </div>
+              @error('email')
+                <div class="text-danger small">{{ $message }}</div>
+              @enderror
+              <div id="email-otp-help" class="small text-muted mt-1"></div>
+            </div>
+
             {{-- No Telepon + OTP --}}
             <div class="col-md-6">
               <label for="phone" class="form-label">No Telepon</label>
@@ -65,6 +80,16 @@
                 <label for="otp_code" class="form-label">Kode OTP</label>
                 <input type="text" id="otp_code" name="otp_code" class="form-control" placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}" required>
                 @error('otp_code')
+                  <div class="text-danger small">{{ $message }}</div>
+                @enderror
+              </div>
+            @endif
+
+            @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+              <div class="col-md-6">
+                <label for="email_otp_code" class="form-label">Kode OTP Email</label>
+                <input type="text" id="email_otp_code" name="email_otp_code" class="form-control" placeholder="Masukkan kode OTP Email" value="{{ old('email_otp_code') }}" required>
+                @error('email_otp_code')
                   <div class="text-danger small">{{ $message }}</div>
                 @enderror
               </div>
@@ -149,6 +174,45 @@
       } catch (e) {
         otpHelp.textContent = 'Gagal mengirim OTP.';
         otpHelp.classList.add('text-danger');
+      }
+    });
+  })();
+  @endif
+
+  @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+  (function () {
+    const btnEmailOtp = document.getElementById('btn-email-otp');
+    const emailInput = document.getElementById('email');
+    const emailOtpHelp = document.getElementById('email-otp-help');
+    btnEmailOtp.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        emailOtpHelp.textContent = 'Format email tidak valid.';
+        emailOtpHelp.classList.add('text-danger');
+        return;
+      }
+      emailOtpHelp.textContent = 'Mengirim OTP Email...';
+      emailOtpHelp.classList.remove('text-danger');
+      try {
+        const res = await fetch("{{ route('users.email-otp') }}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+          },
+          body: JSON.stringify({ email, invite_code: "{{ $invite_code ?? '' }}" })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const firstError = data?.errors ? Object.values(data.errors)[0]?.[0] : null;
+          emailOtpHelp.textContent = firstError || data.message || 'Gagal mengirim OTP Email.';
+          emailOtpHelp.classList.add('text-danger');
+          return;
+        }
+        emailOtpHelp.textContent = data.message || 'OTP Email terkirim.';
+      } catch (e) {
+        emailOtpHelp.textContent = 'Gagal mengirim OTP Email.';
+        emailOtpHelp.classList.add('text-danger');
       }
     });
   })();

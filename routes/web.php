@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Room;
@@ -752,17 +753,68 @@ Route::post('/pengguna/otp', function (Request $request) {
     return response()->json(['message' => 'OTP berhasil dikirim.']);
 })->name('users.otp');
 
+Route::post('/pengguna/email-otp', function (Request $request) {
+    if (!filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN)) {
+        return response()->json(['message' => 'OTP Email sedang dinonaktifkan.'], 400);
+    }
+
+    $data = $request->validate([
+        'email' => ['required', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')],
+        'invite_code' => ['nullable', 'string'],
+    ], [
+        'email.required' => 'Email wajib diisi.',
+        'email.email' => 'Format email tidak valid.',
+        'email.unique' => 'Email sudah terdaftar.',
+    ]);
+
+    if (!Auth::check()) {
+        $invite = !empty($data['invite_code']) ? Cache::get('user_invite_' . $data['invite_code']) : null;
+        if (!$invite || empty($invite['valid'])) {
+            return response()->json(['message' => 'Akses tidak valid.'], 403);
+        }
+    }
+
+    $email = strtolower(trim($data['email']));
+    $length = (int) (env('OTP_LENGTH') ?: 6);
+    $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
+    $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+
+    try {
+        Mail::send('auth.verify-email', [
+            'code' => $code,
+            'email' => $email,
+            'expireMinutes' => $expireMinutes,
+        ], function ($message) use ($email) {
+            $message->to($email)->subject('Kode OTP Verifikasi Email SIMTI');
+        });
+    } catch (\Throwable $e) {
+        return response()->json(['message' => 'Gagal mengirim OTP Email.'], 500);
+    }
+
+    $request->session()->put([
+        'email_otp_code' => $code,
+        'email_otp_email' => $email,
+        'email_otp_expires' => now()->addMinutes($expireMinutes)->timestamp,
+    ]);
+
+    return response()->json(['message' => 'OTP Email berhasil dikirim.']);
+})->name('users.email-otp');
+
 Route::post('/pengguna', function (Request $request) {
     $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+    $emailOtpEnabled = filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
+        'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
         'is_admin' => ['nullable', 'boolean'],
         'phone' => ['required', 'string'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
+        'email_otp_code' => $emailOtpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
     ], [
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
+        'email_otp_code.digits' => 'Kode OTP Email harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
     $data['phone'] = normalize_id_phone($data['phone'] ?? null);
@@ -792,26 +844,37 @@ Route::post('/pengguna', function (Request $request) {
         }
     }
 
+    if ($emailOtpEnabled) {
+        $sessionCode = $request->session()->get('email_otp_code');
+        $sessionEmail = $request->session()->get('email_otp_email');
+        $sessionExpires = $request->session()->get('email_otp_expires');
+        if (!$sessionCode || !$sessionEmail || !$sessionExpires) {
+            return back()->withErrors(['email_otp_code' => 'Kode OTP Email belum dikirim atau sudah kadaluarsa.'])->withInput();
+        }
+        if ((int) $sessionExpires < now()->timestamp) {
+            $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+            return back()->withErrors(['email_otp_code' => "Kode OTP Email sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
+        }
+        if (strtolower($sessionEmail) !== strtolower($data['email'])) {
+            return back()->withErrors(['email' => 'Email tidak sesuai dengan OTP Email yang dikirim.'])->withInput();
+        }
+        if ($sessionCode !== $data['email_otp_code']) {
+            return back()->withErrors(['email_otp_code' => 'Kode OTP Email tidak valid.'])->withInput();
+        }
+    }
+
     $data['is_admin'] = filter_var($data['is_admin'] ?? false, FILTER_VALIDATE_BOOLEAN);
-    unset($data['otp_code']);
+    unset($data['otp_code'], $data['email_otp_code']);
     $data['is_verified'] = false;
     $user = new User($data);
-
-    if (Schema::hasColumn('users', 'email')) {
-        $base = strtolower(preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $data['username']));
-        $email = $base . '@simti.xyz';
-        $i = 1;
-        while (User::where('email', $email)->exists()) {
-            $email = $base . "+$i@simti.xyz";
-            $i++;
-        }
-        $user->email = $email;
-    }
 
     $user->save();
 
     if ($otpEnabled) {
         $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
+    }
+    if ($emailOtpEnabled) {
+        $request->session()->forget(['email_otp_code', 'email_otp_email', 'email_otp_expires']);
     }
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
 })->name('users.store')->middleware(['auth', 'admin']);
@@ -823,15 +886,19 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     }
     $request->merge(['invite_code' => $kode]);
     $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+    $emailOtpEnabled = filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
+        'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email'],
         'phone' => ['required', 'string'],
         'otp_code' => $otpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
+        'email_otp_code' => $emailOtpEnabled ? ['required', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['required', 'string', 'min:8'],
         'invite_code' => ['required', 'string'],
     ], [
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
+        'email_otp_code.digits' => 'Kode OTP Email harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
     $data['phone'] = normalize_id_phone($data['phone'] ?? null);
@@ -861,29 +928,82 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         }
     }
 
+    if ($emailOtpEnabled) {
+        $sessionCode = $request->session()->get('email_otp_code');
+        $sessionEmail = $request->session()->get('email_otp_email');
+        $sessionExpires = $request->session()->get('email_otp_expires');
+        if (!$sessionCode || !$sessionEmail || !$sessionExpires) {
+            return back()->withErrors(['email_otp_code' => 'Kode OTP Email belum dikirim atau sudah kadaluarsa.'])->withInput();
+        }
+        if ((int) $sessionExpires < now()->timestamp) {
+            $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+            return back()->withErrors(['email_otp_code' => "Kode OTP Email sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
+        }
+        if (strtolower($sessionEmail) !== strtolower($data['email'])) {
+            return back()->withErrors(['email' => 'Email tidak sesuai dengan OTP Email yang dikirim.'])->withInput();
+        }
+        if ($sessionCode !== $data['email_otp_code']) {
+            return back()->withErrors(['email_otp_code' => 'Kode OTP Email tidak valid.'])->withInput();
+        }
+    }
+
     $data['role_id'] = null;
     $data['is_admin'] = false;
-    unset($data['otp_code'], $data['invite_code']);
+    unset($data['otp_code'], $data['email_otp_code'], $data['invite_code']);
     $data['is_verified'] = false;
     $user = new User($data);
-    if (Schema::hasColumn('users', 'email')) {
-        $base = strtolower(preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $data['username']));
-        $email = $base . '@simti.xyz';
-        $i = 1;
-        while (User::where('email', $email)->exists()) {
-            $email = $base . "+$i@simti.xyz";
-            $i++;
-        }
-        $user->email = $email;
-    }
     $user->save();
 
     if ($otpEnabled) {
         $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
     }
+    if ($emailOtpEnabled) {
+        $request->session()->forget(['email_otp_code', 'email_otp_email', 'email_otp_expires']);
+    }
     Cache::forget('user_invite_' . $kode);
     return redirect('/auth/login')->with('success', 'Pendaftaran berhasil. Silakan login.');
 });
+
+Route::match(['get', 'post'], '/test-email', function (Request $request) {
+    $to = trim((string) $request->input('to', auth()->user()->email ?? ''));
+
+    if ($to === '') {
+        $message = 'Email tujuan wajib diisi. Gunakan /test-email?to=nama@domain.com';
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => false, 'message' => $message], 422);
+        }
+        return response($message, 422);
+    }
+
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        $message = 'Format email tujuan tidak valid.';
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => false, 'message' => $message], 422);
+        }
+        return response($message, 422);
+    }
+
+    try {
+        Mail::raw('Test SMTP SIMTI RSUDZM - ' . now()->format('Y-m-d H:i:s'), function ($message) use ($to) {
+            $message->to($to)->subject('Test SMTP SIMTI RSUDZM');
+        });
+    } catch (\Throwable $e) {
+        $message = 'Gagal kirim email: ' . $e->getMessage();
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => false, 'message' => $message], 500);
+        }
+        return response($message, 500);
+    }
+
+    if ($request->expectsJson()) {
+        return response()->json([
+            'ok' => true,
+            'message' => "Email test berhasil dikirim ke {$to}.",
+        ]);
+    }
+
+    return response("Email test berhasil dikirim ke {$to}.", 200);
+})->name('mail.test')->middleware(['auth', 'admin']);
 
 Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
     try {
