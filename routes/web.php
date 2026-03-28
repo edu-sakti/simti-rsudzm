@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Room;
@@ -201,6 +202,14 @@ Route::get('/kepegawaian/pns', function () {
 Route::get('/kepegawaian/pppk', function () {
     return view('kepegawaian.pppk');
 })->middleware(['auth', 'permission:pegawai_pppk,read']);
+
+Route::get('/kepegawaian/kontrak-tetap', function () {
+    return view('kepegawaian.kontrak-tetap');
+})->middleware(['auth', 'permission:data_pegawai,read']);
+
+Route::get('/kepegawaian/kontrak-tidak-tetap', function () {
+    return view('kepegawaian.kontrak-tidak-tetap');
+})->middleware(['auth', 'permission:data_pegawai,read']);
 
 Route::get('/kepegawaian/jabatan', function () {
     return view('kepegawaian.jabatan');
@@ -758,9 +767,16 @@ Route::post('/pengguna/email-otp', function (Request $request) {
         return response()->json(['message' => 'OTP Email sedang dinonaktifkan.'], 400);
     }
 
+    $emailRules = ['required', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')];
+    $currentUsername = (string) $request->input('current_username', '');
+    if ($currentUsername !== '') {
+        $emailRules = ['required', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')->ignore($currentUsername, 'username')];
+    }
+
     $data = $request->validate([
-        'email' => ['required', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')],
+        'email' => $emailRules,
         'invite_code' => ['nullable', 'string'],
+        'current_username' => ['nullable', 'string'],
     ], [
         'email.required' => 'Email wajib diisi.',
         'email.email' => 'Format email tidak valid.',
@@ -788,7 +804,14 @@ Route::post('/pengguna/email-otp', function (Request $request) {
             $message->to($email)->subject('Kode OTP Verifikasi Email SIMTI');
         });
     } catch (\Throwable $e) {
-        return response()->json(['message' => 'Gagal mengirim OTP Email.'], 500);
+        Log::error('Email OTP send failed', [
+            'email' => $email,
+            'error' => $e->getMessage(),
+        ]);
+        $message = app()->hasDebugModeEnabled()
+            ? ('Gagal mengirim OTP Email: ' . $e->getMessage())
+            : 'Gagal mengirim OTP Email.';
+        return response()->json(['message' => $message], 500);
     }
 
     $request->session()->put([
@@ -1025,15 +1048,19 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $user = User::findOrFail($username);
 
     $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+    $emailOtpEnabled = filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
+        'email' => ['required', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')->ignore($user->username, 'username')],
         'is_admin' => ['nullable', 'boolean'],
         'phone' => ['required', 'string'],
         'otp_code' => $otpEnabled ? ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
+        'email_otp_code' => $emailOtpEnabled ? ['nullable', 'digits:' . (env('OTP_LENGTH') ?: 6)] : ['nullable'],
         'password' => ['nullable', 'string', 'min:8'],
     ], [
         'otp_code.digits' => 'Kode OTP harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
+        'email_otp_code.digits' => 'Kode OTP Email harus ' . (env('OTP_LENGTH') ?: 6) . ' digit.',
     ]);
 
     $data['phone'] = normalize_id_phone($data['phone'] ?? null);
@@ -1063,6 +1090,7 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
         }
     }
     $phoneChanged = isset($data['phone']) && $data['phone'] !== $user->phone;
+    $emailChanged = isset($data['email']) && strtolower((string) $data['email']) !== strtolower((string) $user->email);
     if ($phoneChanged && $otpEnabled) {
         $sessionCode = $request->session()->get('otp_code');
         $sessionPhone = $request->session()->get('otp_phone');
@@ -1081,6 +1109,27 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
             return back()->withErrors(['otp_code' => 'Kode OTP tidak valid.'])->withInput();
         }
     }
+
+    if ($emailChanged && $emailOtpEnabled) {
+        $sessionCode = $request->session()->get('email_otp_code');
+        $sessionEmail = $request->session()->get('email_otp_email');
+        $sessionExpires = $request->session()->get('email_otp_expires');
+        if (!$sessionCode || !$sessionEmail || !$sessionExpires) {
+            return back()->withErrors(['email_otp_code' => 'Kode OTP Email belum dikirim atau sudah kadaluarsa.'])->withInput();
+        }
+        if ((int) $sessionExpires < now()->timestamp) {
+            $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
+            return back()->withErrors(['email_otp_code' => "Kode OTP Email sudah kadaluarsa (maksimal {$expireMinutes} menit)."])->withInput();
+        }
+        if (strtolower((string) $sessionEmail) !== strtolower((string) $data['email'])) {
+            return back()->withErrors(['email' => 'Email tidak sesuai dengan OTP Email yang dikirim.'])->withInput();
+        }
+        if ($sessionCode !== ($data['email_otp_code'] ?? null)) {
+            return back()->withErrors(['email_otp_code' => 'Kode OTP Email tidak valid.'])->withInput();
+        }
+    }
+
+    unset($data['otp_code'], $data['email_otp_code']);
 
     $user->update($data);
 
@@ -2773,7 +2822,7 @@ Route::get('/profile/{token}/edit', function (Request $request, string $token) {
     if (!$user->is_admin && (int) $profile->user_id !== (int) $user->id) {
         abort(403);
     }
-    return view('profile.edit', compact('profile', 'user', 'token'));
+    return view('profile.edit-data-utama', compact('profile', 'user', 'token'));
 })->name('profile.edit')->middleware('auth');
 
 Route::put('/profile/{token}', function (Request $request, string $token) {

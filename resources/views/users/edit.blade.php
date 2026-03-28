@@ -34,6 +34,22 @@
                    value="{{ old('username', $user->username) }}" required>
           </div>
 
+          {{-- Email + OTP Email --}}
+          <div class="col-md-6">
+            <label for="edit_email" class="form-label">Email</label>
+            <div class="input-group">
+              <input type="email" id="edit_email" name="email" class="form-control"
+                     value="{{ old('email', $user->email) }}" placeholder="Masukkan email aktif" required>
+              @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+                <button class="btn btn-outline-primary" type="button" id="btn-email-otp-edit">OTP Email</button>
+              @endif
+            </div>
+            @error('email')
+              <div class="text-danger small">{{ $message }}</div>
+            @enderror
+            <div id="email-otp-help-edit" class="small text-muted mt-1"></div>
+          </div>
+
           {{-- No Telepon + OTP --}}
           <div class="col-md-6">
             <label for="edit_phone" class="form-label">No Telepon</label>
@@ -57,6 +73,18 @@
               <input type="text" id="otp_code_edit" name="otp_code" class="form-control"
                      placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}">
               @error('otp_code')
+              <div class="text-danger small">{{ $message }}</div>
+            @enderror
+          </div>
+          @endif
+
+          {{-- Input OTP Email (muncul jika email berubah) --}}
+          @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+            <div class="col-md-6" id="otp-email-wrapper-edit" style="display:none;">
+              <label for="email_otp_code_edit" class="form-label">Kode OTP Email</label>
+              <input type="text" id="email_otp_code_edit" name="email_otp_code" class="form-control"
+                     placeholder="Masukkan kode OTP Email" value="{{ old('email_otp_code') }}">
+              @error('email_otp_code')
                 <div class="text-danger small">{{ $message }}</div>
               @enderror
             </div>
@@ -153,6 +181,70 @@
       } catch (e) {
         otpHelp.textContent = 'Gagal mengirim OTP.';
         otpHelp.classList.add('text-danger');
+      }
+    });
+  })();
+  @endif
+
+  @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+  (function () {
+    const originalEmail = "{{ strtolower((string) ($user->email ?? '')) }}";
+    const username = "{{ $user->username }}";
+    const emailInput = document.getElementById('edit_email');
+    const otpWrapper = document.getElementById('otp-email-wrapper-edit');
+    const btnEmailOtp = document.getElementById('btn-email-otp-edit');
+    const emailOtpHelp = document.getElementById('email-otp-help-edit');
+
+    const toggleEmailOtp = () => {
+      const changed = emailInput.value.trim().toLowerCase() !== originalEmail;
+      if (changed) {
+        otpWrapper.style.display = '';
+        btnEmailOtp.disabled = false;
+        btnEmailOtp.classList.remove('disabled');
+      } else {
+        otpWrapper.style.display = 'none';
+        btnEmailOtp.disabled = true;
+        btnEmailOtp.classList.add('disabled');
+      }
+    };
+
+    emailInput.addEventListener('input', toggleEmailOtp);
+    toggleEmailOtp();
+
+    btnEmailOtp.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        emailOtpHelp.textContent = 'Format email tidak valid.';
+        emailOtpHelp.classList.add('text-danger');
+        return;
+      }
+
+      emailOtpHelp.textContent = 'Mengirim OTP Email...';
+      emailOtpHelp.classList.remove('text-danger');
+
+      try {
+        const res = await fetch("{{ route('users.email-otp') }}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+          },
+          body: JSON.stringify({
+            email,
+            current_username: username
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const firstError = data?.errors ? Object.values(data.errors)[0]?.[0] : null;
+          emailOtpHelp.textContent = firstError || data.message || 'Gagal mengirim OTP Email.';
+          emailOtpHelp.classList.add('text-danger');
+          return;
+        }
+        emailOtpHelp.textContent = data.message || 'OTP Email terkirim.';
+      } catch (e) {
+        emailOtpHelp.textContent = 'Gagal mengirim OTP Email.';
+        emailOtpHelp.classList.add('text-danger');
       }
     });
   })();

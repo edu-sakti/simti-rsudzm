@@ -38,9 +38,7 @@
                 <th style="width:60px">No</th>
                 <th>Nama</th>
                 <th>Username</th>
-                <th>No HP</th>
-                <th>Status</th>
-                <th style="width:160px">Aksi</th>
+                <th style="width:260px">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -49,17 +47,21 @@
                   <td>{{ ($users->currentPage() - 1) * $users->perPage() + $index + 1 }}</td>
                   <td>{{ $user->name }}</td>
                   <td>{{ $user->username }}</td>
-                  <td>{{ $user->phone ?? '-' }}</td>
-                  <td>
-                    @if($user->is_verified)
-                      <span class="badge bg-success">Tervalidasi</span>
-                    @else
-                      <span class="badge bg-warning text-dark">Belum Valid</span>
-                    @endif
-                  </td>
                   <td>
                     @php($encoded = encrypt($user->username))
                     <div class="d-flex gap-2">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-info js-detail-btn"
+                        data-name="{{ $user->name }}"
+                        data-username="{{ $user->username }}"
+                        data-email="{{ $user->email ?? '-' }}"
+                        data-phone="{{ $user->phone ?? '-' }}"
+                        data-status="{{ $user->is_verified ? 'Tervalidasi' : 'Belum Valid' }}"
+                      >
+                        <i data-feather="eye"></i> Detail
+                      </button>
+
                       {{-- Tombol Edit --}}
                       @if($user->is_verified)
                         <a href="{{ route('users.edit', $encoded) }}" class="btn btn-sm btn-outline-secondary">
@@ -87,7 +89,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="text-center text-muted">Belum ada data pengguna.</td>
+                  <td colspan="4" class="text-center text-muted">Belum ada data pengguna.</td>
                 </tr>
               @endforelse
             </tbody>
@@ -120,6 +122,62 @@
       });
     }
   @endif
+
+  (function () {
+    const buttons = document.querySelectorAll('.js-detail-btn');
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const name = btn.getAttribute('data-name') || '-';
+        const username = btn.getAttribute('data-username') || '-';
+        const email = btn.getAttribute('data-email') || '-';
+        const phone = btn.getAttribute('data-phone') || '-';
+        const status = btn.getAttribute('data-status') || '-';
+
+        if (typeof Swal === 'undefined') {
+          alert(`Nama: ${name}\nUsername: ${username}\nEmail: ${email}\nNo HP: ${phone}\nStatus: ${status}`);
+          return;
+        }
+
+        Swal.fire({
+          title: 'Detail Pengguna',
+          icon: 'info',
+          html: `
+            <div style="text-align:left; max-width:420px; margin:0 auto;">
+              <div style="display:grid; grid-template-columns:120px 1fr; row-gap:10px; column-gap:10px; font-size:1rem;">
+                <div style="font-weight:600; color:#495057;">Nama</div>
+                <div style="color:#212529;">${name}</div>
+
+                <div style="font-weight:600; color:#495057;">Username</div>
+                <div style="color:#212529;">${username}</div>
+
+                <div style="font-weight:600; color:#495057;">Email</div>
+                <div style="color:#212529; word-break:break-word;">${email}</div>
+
+                <div style="font-weight:600; color:#495057;">No HP</div>
+                <div style="color:#212529;">${phone}</div>
+
+                <div style="font-weight:600; color:#495057;">Status</div>
+                <div>
+                  <span style="
+                    display:inline-block;
+                    padding:2px 10px;
+                    border-radius:999px;
+                    font-size:.85rem;
+                    font-weight:600;
+                    color:#fff;
+                    background:${status === 'Tervalidasi' ? '#198754' : '#ffc107'};
+                  ">
+                    ${status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          `,
+          confirmButtonText: 'Tutup'
+        });
+      });
+    });
+  })();
 
   (function () {
     const forms = document.querySelectorAll('form.js-delete-form');

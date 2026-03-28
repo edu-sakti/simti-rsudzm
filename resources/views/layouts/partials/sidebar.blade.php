@@ -50,30 +50,7 @@
                 [
                     'header' => 'Profil',
                     'items' => [
-                        [
-                            'type' => 'collapse',
-                            'id' => 'profilSubmenu',
-                            'label' => 'Profil',
-                            'icon' => 'user',
-                            'patterns' => ['profile', 'profile/*'],
-                            'children' => [
-                                ['label' => 'Data Pribadi', 'icon' => 'file-text', 'url' => url('/profile'), 'patterns' => ['profile']],
-                                ['label' => 'Kontak Darurat', 'icon' => 'phone', 'url' => 'javascript:void(0)', 'patterns' => []],
-                            ],
-                        ],
-                        [
-                            'type' => 'collapse',
-                            'id' => 'riwayatProfilSubmenu',
-                            'label' => 'Riwayat',
-                            'icon' => 'clock',
-                            'patterns' => ['profile/riwayat*'],
-                            'children' => [
-                                ['label' => 'Pendidikan', 'icon' => 'book-open', 'url' => 'javascript:void(0)', 'patterns' => []],
-                                ['label' => 'Riwayat Kerja', 'icon' => 'briefcase', 'url' => 'javascript:void(0)', 'patterns' => []],
-                            ],
-                        ],
-                        ['type' => 'link', 'label' => 'Keprofesian', 'icon' => 'award', 'url' => 'javascript:void(0)', 'patterns' => []],
-                        ['type' => 'link', 'label' => 'Data Pendukung', 'icon' => 'folder', 'url' => 'javascript:void(0)', 'patterns' => []],
+                        ['type' => 'link', 'label' => 'Profil', 'icon' => 'user', 'url' => url('/profile'), 'patterns' => ['profile', 'profile/*']],
                     ],
                 ],
                 [
@@ -94,51 +71,10 @@
                 [
                     'header' => 'Kepegawaian',
                     'items' => [
-                        [
-                            'type' => 'collapse',
-                            'id' => 'pegawaiSubmenu',
-                            'label' => 'Data Pegawai',
-                            'icon' => 'users',
-                            'permission' => 'data_pegawai',
-                            'patterns' => ['kepegawaian/data-pegawai', 'kepegawaian/pns', 'kepegawaian/pppk'],
-                            'children' => [
-                                ['label' => 'PNS', 'icon' => 'user-check', 'url' => url('/kepegawaian/pns'), 'patterns' => ['kepegawaian/pns'], 'permission' => 'pegawai_pns'],
-                                ['label' => 'PPPK', 'icon' => 'user-plus', 'url' => url('/kepegawaian/pppk'), 'patterns' => ['kepegawaian/pppk'], 'permission' => 'pegawai_pppk'],
-                            ],
-                        ],
-                        [
-                            'type' => 'collapse',
-                            'id' => 'riwayatSubmenu',
-                            'label' => 'Riwayat Pegawai',
-                            'icon' => 'clock',
-                            'permission' => 'riwayat_pegawai',
-                            'patterns' => [
-                                'kepegawaian/riwayat',
-                                'kepegawaian/riwayat/pendidikan',
-                                'kepegawaian/riwayat/pangkat-golongan',
-                                'kepegawaian/riwayat/mutasi',
-                                'kepegawaian/riwayat/pelatihan',
-                            ],
-                            'children' => [
-                                ['label' => 'Pendidikan', 'icon' => 'book-open', 'url' => url('/kepegawaian/riwayat/pendidikan'), 'patterns' => ['kepegawaian/riwayat/pendidikan'], 'permission' => 'riwayat_pendidikan'],
-                                ['label' => 'Pangkat / Golongan', 'icon' => 'trending-up', 'url' => url('/kepegawaian/riwayat/pangkat-golongan'), 'patterns' => ['kepegawaian/riwayat/pangkat-golongan'], 'permission' => 'riwayat_pangkat'],
-                                ['label' => 'Mutasi', 'icon' => 'shuffle', 'url' => url('/kepegawaian/riwayat/mutasi'), 'patterns' => ['kepegawaian/riwayat/mutasi'], 'permission' => 'riwayat_mutasi'],
-                                ['label' => 'Pelatihan', 'icon' => 'clipboard', 'url' => url('/kepegawaian/riwayat/pelatihan'), 'patterns' => ['kepegawaian/riwayat/pelatihan'], 'permission' => 'riwayat_pelatihan'],
-                            ],
-                        ],
-                        ['type' => 'link', 'label' => 'Jabatan Pegawai', 'icon' => 'award', 'url' => url('/kepegawaian/jabatan'), 'patterns' => ['kepegawaian/jabatan'], 'permission' => 'jabatan'],
-                        [
-                            'type' => 'collapse',
-                            'id' => 'legalitasSubmenu',
-                            'label' => 'Legalitas',
-                            'icon' => 'shield',
-                            'permission' => 'legalitas_sip',
-                            'patterns' => ['kepegawaian/legalitas/sip', 'kepegawaian/legalitas/str'],
-                            'children' => [
-                                ['label' => 'SIP', 'icon' => 'file-text', 'url' => url('/kepegawaian/legalitas/sip'), 'patterns' => ['kepegawaian/legalitas/sip'], 'permission' => 'legalitas_sip'],
-                                ['label' => 'STR', 'icon' => 'file', 'url' => url('/kepegawaian/legalitas/str'), 'patterns' => ['kepegawaian/legalitas/str'], 'permission' => 'legalitas_str'],
-                            ],
-                        ],
+                        ['type' => 'link', 'label' => 'PNS', 'icon' => 'user-check', 'url' => url('/kepegawaian/pns'), 'patterns' => ['kepegawaian/pns'], 'permission' => 'pegawai_pns'],
+                        ['type' => 'link', 'label' => 'PPPK', 'icon' => 'user-plus', 'url' => url('/kepegawaian/pppk'), 'patterns' => ['kepegawaian/pppk'], 'permission' => 'pegawai_pppk'],
+                        ['type' => 'link', 'label' => 'Kontrak Tetap', 'icon' => 'user-check', 'url' => url('/kepegawaian/kontrak-tetap'), 'patterns' => ['kepegawaian/kontrak-tetap'], 'permission' => 'data_pegawai'],
+                        ['type' => 'link', 'label' => 'Kontrak Tidak Tetap', 'icon' => 'user-minus', 'url' => url('/kepegawaian/kontrak-tidak-tetap'), 'patterns' => ['kepegawaian/kontrak-tidak-tetap'], 'permission' => 'data_pegawai'],
                     ],
                 ],
                 [

@@ -6,85 +6,73 @@
 <div class="container-fluid p-0">
     <h1 class="h3 mb-3">Profil</h1>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <div class="text-muted small">Nama</div>
-                    <div class="fw-semibold">{{ $profile->nama ?? '-' }}</div>
-                </div>
-                <div class="col-md-6">
-                    <div class="text-muted small">Jenis Kelamin</div>
-                    <div class="fw-semibold">{{ $profile->jenis_kelamin ?? '-' }}</div>
-                </div>
+    <ul class="nav nav-tabs mb-3" id="profilTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-data-utama" data-bs-toggle="tab" data-bs-target="#panel-data-utama" type="button" role="tab" aria-controls="panel-data-utama" aria-selected="true">
+                Data Utama
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-golongan" data-bs-toggle="tab" data-bs-target="#panel-golongan" type="button" role="tab" aria-controls="panel-golongan" aria-selected="false">
+                Golongan
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-jabatan" data-bs-toggle="tab" data-bs-target="#panel-jabatan" type="button" role="tab" aria-controls="panel-jabatan" aria-selected="false">
+                Jabatan
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-posisi" data-bs-toggle="tab" data-bs-target="#panel-posisi" type="button" role="tab" aria-controls="panel-posisi" aria-selected="false">
+                Posisi
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-pendidikan" data-bs-toggle="tab" data-bs-target="#panel-pendidikan" type="button" role="tab" aria-controls="panel-pendidikan" aria-selected="false">
+                Pendidikan
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-profesi" data-bs-toggle="tab" data-bs-target="#panel-profesi" type="button" role="tab" aria-controls="panel-profesi" aria-selected="false">
+                Profesi
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-keluarga" data-bs-toggle="tab" data-bs-target="#panel-keluarga" type="button" role="tab" aria-controls="panel-keluarga" aria-selected="false">
+                Keluarga
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-pensiun" data-bs-toggle="tab" data-bs-target="#panel-pensiun" type="button" role="tab" aria-controls="panel-pensiun" aria-selected="false">
+                Pensiun
+            </button>
+        </li>
+    </ul>
 
-                <div class="col-md-6">
-                    <div class="text-muted small">Tempat Lahir</div>
-                    <div class="fw-semibold">{{ $profile->tempat_lahir ?? '-' }}</div>
-                </div>
-                <div class="col-md-6">
-                    <div class="text-muted small">Tanggal Lahir</div>
-                    <div class="fw-semibold">{{ $profile->tanggal_lahir ?? '-' }}</div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="text-muted small">Agama</div>
-                    <div class="fw-semibold">{{ $profile->agama ?? '-' }}</div>
-                </div>
-                <div class="col-md-6">
-                    <div class="text-muted small">Status Perkawinan</div>
-                    <div class="fw-semibold">{{ $profile->status_perkawinan ?? '-' }}</div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="text-muted small">Provinsi</div>
-                    <div class="fw-semibold" id="provinsiLabel" data-code="{{ $profile->provinsi ?? '' }}">
-                        {{ $profile->provinsi ?? '-' }}
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="text-muted small">Kabupaten/Kota</div>
-                    <div class="fw-semibold" id="kabupatenLabel" data-code="{{ $profile->kabupaten ?? '' }}">
-                        {{ $profile->kabupaten ?? '-' }}
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="text-muted small">Kecamatan</div>
-                    <div class="fw-semibold" id="kecamatanLabel" data-code="{{ $profile->kecamatan ?? '' }}">
-                        {{ $profile->kecamatan ?? '-' }}
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="text-muted small">Desa/Kelurahan</div>
-                    <div class="fw-semibold" id="desaLabel" data-code="{{ $profile->desa ?? '' }}">
-                        {{ $profile->desa ?? '-' }}
-                    </div>
-                </div>
-
-                <div class="col-12">
-                    <div class="text-muted small">Detail Alamat</div>
-                    <div class="fw-semibold">{{ $profile->alamat ?? '-' }}</div>
-                </div>
-            </div>
-
-            @php
-                $roleName = '';
-                if (auth()->check() && (auth()->user()->role_id ?? null)) {
-                    $roleName = \App\Models\Role::where('id', auth()->user()->role_id)->value('name') ?? '';
-                }
-                $isAdminProfile = (auth()->user()->is_admin ?? false) || strtolower($roleName) === 'admin';
-            @endphp
-            <div class="mt-4 d-flex gap-2">
-                <a href="{{ route('profile.edit', profile_token_encode((string) $profile->id)) }}" class="btn btn-primary">
-                    <i data-feather="edit-2"></i> Edit Profil
-                </a>
-                @if(!$isAdminProfile)
-                    <a href="{{ url('/apps') }}" class="btn btn-outline-secondary">
-                        <i data-feather="arrow-left"></i> Kembali
-                    </a>
-                @endif
-            </div>
+    <div class="tab-content" id="profilTabsContent">
+        <div class="tab-pane fade show active" id="panel-data-utama" role="tabpanel" aria-labelledby="tab-data-utama" tabindex="0">
+            @include('profile.data-utama', ['profile' => $profile])
+        </div>
+        <div class="tab-pane fade" id="panel-golongan" role="tabpanel" aria-labelledby="tab-golongan" tabindex="0">
+            <div class="card"><div class="card-body text-muted">Belum ada data golongan.</div></div>
+        </div>
+        <div class="tab-pane fade" id="panel-jabatan" role="tabpanel" aria-labelledby="tab-jabatan" tabindex="0">
+            <div class="card"><div class="card-body text-muted">Belum ada data jabatan.</div></div>
+        </div>
+        <div class="tab-pane fade" id="panel-posisi" role="tabpanel" aria-labelledby="tab-posisi" tabindex="0">
+            <div class="card"><div class="card-body text-muted">Belum ada data posisi.</div></div>
+        </div>
+        <div class="tab-pane fade" id="panel-pendidikan" role="tabpanel" aria-labelledby="tab-pendidikan" tabindex="0">
+            <div class="card"><div class="card-body text-muted">Belum ada data pendidikan.</div></div>
+        </div>
+        <div class="tab-pane fade" id="panel-profesi" role="tabpanel" aria-labelledby="tab-profesi" tabindex="0">
+            <div class="card"><div class="card-body text-muted">Belum ada data profesi.</div></div>
+        </div>
+        <div class="tab-pane fade" id="panel-keluarga" role="tabpanel" aria-labelledby="tab-keluarga" tabindex="0">
+            <div class="card"><div class="card-body text-muted">Belum ada data keluarga.</div></div>
+        </div>
+        <div class="tab-pane fade" id="panel-pensiun" role="tabpanel" aria-labelledby="tab-pensiun" tabindex="0">
+            <div class="card"><div class="card-body text-muted">Belum ada data pensiun.</div></div>
         </div>
     </div>
 </div>
