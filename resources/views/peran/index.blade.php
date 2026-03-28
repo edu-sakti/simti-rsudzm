@@ -26,7 +26,6 @@
                             <th style="width: 60px;">No</th>
                             <th>Pengguna</th>
                             <th>Peran</th>
-                            <th>Keterangan</th>
                             <th style="width: 160px;">Aksi</th>
                         </tr>
                     </thead>
@@ -37,8 +36,16 @@
                                 <td>
                                     <div class="fw-semibold">{{ $item->user_name }}</div>
                                 </td>
-                                <td>{{ $item->role_name }}</td>
-                                <td>{{ $item->keterangan ?: '-' }}</td>
+                                <td>
+                                    @php
+                                        $roleText = (string) ($item->role_name ?? '-');
+                                        $roleSlug = \Illuminate\Support\Str::lower(trim($roleText));
+                                        if (in_array($roleSlug, ['petugas', 'kepala'], true) && !empty($item->room_names)) {
+                                            $roleText .= ' ' . $item->room_names;
+                                        }
+                                    @endphp
+                                    {{ $roleText }}
+                                </td>
                                 <td>
                                     <div class="d-flex gap-2">
                                         <a href="{{ route('peran.edit', peran_token_encode((string) $item->id)) }}" class="btn btn-sm btn-outline-secondary">
@@ -56,7 +63,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted">Belum ada data peran.</td>
+                                <td colspan="4" class="text-center text-muted">Belum ada data peran.</td>
                             </tr>
                         @endforelse
                     </tbody>

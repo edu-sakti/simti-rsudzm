@@ -66,12 +66,12 @@
             <div id="otp-help-edit" class="small text-muted mt-1"></div>
           </div>
 
-          {{-- Input OTP (muncul jika phone berubah) --}}
+          {{-- Input OTP Telepon (muncul jika phone berubah) --}}
           @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
             <div class="col-md-6" id="otp-wrapper-edit" style="display:none;">
-              <label for="otp_code_edit" class="form-label">Kode OTP</label>
+              <label for="otp_code_edit" class="form-label">Kode OTP Telepon</label>
               <input type="text" id="otp_code_edit" name="otp_code" class="form-control"
-                     placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}">
+                     placeholder="Masukkan kode OTP Telepon" value="{{ old('otp_code') }}">
               @error('otp_code')
               <div class="text-danger small">{{ $message }}</div>
             @enderror
@@ -169,7 +169,10 @@
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
           },
-          body: JSON.stringify({ phone })
+          body: JSON.stringify({
+            phone,
+            current_username: "{{ $user->username }}"
+          })
         });
         const data = await res.json();
         if (!res.ok) {

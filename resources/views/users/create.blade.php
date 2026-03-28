@@ -74,11 +74,11 @@
               <div id="otp-help" class="small text-muted mt-1"></div>
             </div>
 
-            {{-- Input OTP --}}
+            {{-- Input OTP Telepon --}}
             @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
               <div class="col-md-6">
-                <label for="otp_code" class="form-label">Kode OTP</label>
-                <input type="text" id="otp_code" name="otp_code" class="form-control" placeholder="Masukkan kode OTP" value="{{ old('otp_code') }}" required>
+                <label for="otp_code" class="form-label">Kode OTP Telepon</label>
+                <input type="text" id="otp_code" name="otp_code" class="form-control" placeholder="Masukkan kode OTP Telepon" value="{{ old('otp_code') }}" required>
                 @error('otp_code')
                   <div class="text-danger small">{{ $message }}</div>
                 @enderror

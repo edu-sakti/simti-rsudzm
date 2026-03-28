@@ -154,6 +154,90 @@ if (!function_exists('is_valid_id_phone')) {
     }
 }
 
+if (!function_exists('notify_admin_new_user_whatsapp')) {
+    function notify_admin_new_user_whatsapp(User $newUser): void
+    {
+        $adminPhones = DB::table('users')
+            ->where('is_admin', 1)
+            ->whereNotNull('phone')
+            ->pluck('phone')
+            ->map(fn ($phone) => normalize_id_phone((string) $phone))
+            ->filter(fn ($phone) => is_valid_id_phone($phone))
+            ->unique()
+            ->values();
+
+        if ($adminPhones->isEmpty()) {
+            return;
+        }
+
+        $baseUrl = rtrim((string) env('WA_GATEWAY_URL', 'http://127.0.0.1:3001'), '/');
+        $message = "Notifikasi Pengguna Baru\n\n"
+            . "Pengguna baru telah berhasil terdaftar dengan detail sebagai berikut:\n"
+            . "Nama: {$newUser->name}\n"
+            . "Username: {$newUser->username}\n"
+            . "No. Telepon: {$newUser->phone}\n"
+            . "Email: {$newUser->email}\n\n"
+            . "Silakan segera lakukan pengecekan dan validasi data.";
+
+        foreach ($adminPhones as $phone) {
+            try {
+                Http::timeout(10)->withHeaders([
+                    'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+                ])->post($baseUrl . '/send', [
+                    'phone' => $phone,
+                    'message' => $message,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal mengirim notif WhatsApp pengguna baru ke admin.', [
+                    'admin_phone' => $phone,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+}
+
+if (!function_exists('notify_user_role_whatsapp')) {
+    function notify_user_role_whatsapp(User $user, string $mode, string $roleName, ?string $roomName = null): void
+    {
+        $phone = normalize_id_phone((string) ($user->phone ?? ''));
+        if (!is_valid_id_phone($phone)) {
+            return;
+        }
+
+        $roleSlug = Str::slug($roleName, '-');
+        $roomText = in_array($roleSlug, ['petugas', 'kepala'], true) && !empty($roomName)
+            ? " pada {$roomName}"
+            : '';
+
+        if ($mode === 'create') {
+            $message = "Notifikasi Peran Baru\n"
+                . "Peran Anda telah berhasil ditambahkan sebagai {$roleName}{$roomText}.\n"
+                . "Silakan cek aplikasi untuk informasi lebih lanjut.";
+        } else {
+            $message = "Perubahan Peran\n"
+                . "Peran Anda telah diperbarui menjadi {$roleName}{$roomText}.\n"
+                . "Silakan cek aplikasi untuk informasi lebih lanjut.";
+        }
+
+        $baseUrl = rtrim((string) env('WA_GATEWAY_URL', 'http://127.0.0.1:3001'), '/');
+        try {
+            Http::timeout(10)->withHeaders([
+                'X-API-KEY' => env('WA_GATEWAY_TOKEN', ''),
+            ])->post($baseUrl . '/send', [
+                'phone' => $phone,
+                'message' => $message,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mengirim notifikasi perubahan peran ke pengguna.', [
+                'user_id' => $user->id,
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+}
+
 Route::get('/', function () {
     return view('home');
 });
@@ -400,6 +484,8 @@ Route::get('/peran-pengguna', function (Request $request) {
 
     $peranPengguna = DB::table('users as u')
         ->leftJoin('roles as r', 'r.id', '=', 'u.role_id')
+        ->leftJoin('room_users as ru', 'ru.user_id', '=', 'u.id')
+        ->leftJoin('rooms as rm', 'rm.id', '=', 'ru.room_id')
         ->whereNotNull('u.role_id')
         ->select([
             'u.id',
@@ -409,15 +495,18 @@ Route::get('/peran-pengguna', function (Request $request) {
             'u.name as user_name',
             'u.username as user_username',
             'r.name as role_name',
+            DB::raw("GROUP_CONCAT(DISTINCT rm.name ORDER BY rm.name SEPARATOR ', ') as room_names"),
         ])
         ->when($search !== '', function ($query) use ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('u.name', 'like', "%{$search}%")
                     ->orWhere('u.username', 'like', "%{$search}%")
                     ->orWhere('r.name', 'like', "%{$search}%")
-                    ->orWhere('r.description', 'like', "%{$search}%");
+                    ->orWhere('r.description', 'like', "%{$search}%")
+                    ->orWhere('rm.name', 'like', "%{$search}%");
             });
         })
+        ->groupBy('u.id', 'u.role_id', 'r.description', 'u.name', 'u.username', 'r.name')
         ->orderBy('u.id')
         ->paginate(10)
         ->withQueryString();
@@ -494,8 +583,10 @@ Route::post('/peran', function (Request $request) {
             ->withInput();
     }
 
+    $selectedRoomName = null;
     if ($needsRoom) {
         $roomId = (int) $request->input('room_id');
+        $selectedRoomName = (string) (DB::table('rooms')->where('id', $roomId)->value('name') ?? '');
 
         DB::table('room_users')->where('user_id', $data['user_id'])->delete();
         DB::table('room_users')->insert([
@@ -508,6 +599,16 @@ Route::post('/peran', function (Request $request) {
         ]);
     } else {
         DB::table('room_users')->where('user_id', $data['user_id'])->delete();
+    }
+
+    $targetUser = User::find((int) $data['user_id']);
+    if ($targetUser) {
+        notify_user_role_whatsapp(
+            $targetUser,
+            'create',
+            (string) (DB::table('roles')->where('id', $data['role_id'])->value('name') ?? ''),
+            $selectedRoomName
+        );
     }
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil ditambahkan.');
@@ -588,8 +689,10 @@ Route::put('/peran/{id}', function (Request $request, string $id) {
             'updated_at' => now(),
         ]);
 
+    $selectedRoomName = null;
     if ($needsRoom) {
         $roomId = (int) $request->input('room_id');
+        $selectedRoomName = (string) (DB::table('rooms')->where('id', $roomId)->value('name') ?? '');
 
         DB::table('room_users')->where('user_id', (int) $id)->delete();
         DB::table('room_users')->insert([
@@ -602,6 +705,16 @@ Route::put('/peran/{id}', function (Request $request, string $id) {
         ]);
     } else {
         DB::table('room_users')->where('user_id', (int) $id)->delete();
+    }
+
+    $targetUser = User::find((int) $id);
+    if ($targetUser) {
+        notify_user_role_whatsapp(
+            $targetUser,
+            'update',
+            (string) (DB::table('roles')->where('id', $data['role_id'])->value('name') ?? ''),
+            $selectedRoomName
+        );
     }
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil diperbarui.');
@@ -720,12 +833,23 @@ Route::post('/pengguna/otp', function (Request $request) {
     $data = $request->validate([
         'phone' => ['required', 'string'],
         'invite_code' => ['nullable', 'string'],
+        'current_username' => ['nullable', 'string'],
     ]);
 
     $normalizedPhone = normalize_id_phone($data['phone'] ?? null);
     if (!is_valid_id_phone($normalizedPhone)) {
         return response()->json(['message' => 'No telepon harus format 628xxx atau 08xxx.'], 422);
     }
+
+    $existingPhoneQuery = User::where('phone', $normalizedPhone);
+    $currentUsername = (string) ($data['current_username'] ?? '');
+    if ($currentUsername !== '') {
+        $existingPhoneQuery->where('username', '!=', $currentUsername);
+    }
+    if ($existingPhoneQuery->exists()) {
+        return response()->json(['message' => 'No HP Telah Terdaftar, Silahkan Hubungi Admin'], 422);
+    }
+
     if (!Auth::check()) {
         $invite = !empty($data['invite_code']) ? Cache::get('user_invite_' . $data['invite_code']) : null;
         if (!$invite || empty($invite['valid'])) {
@@ -767,21 +891,25 @@ Route::post('/pengguna/email-otp', function (Request $request) {
         return response()->json(['message' => 'OTP Email sedang dinonaktifkan.'], 400);
     }
 
-    $emailRules = ['required', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')];
-    $currentUsername = (string) $request->input('current_username', '');
-    if ($currentUsername !== '') {
-        $emailRules = ['required', 'email:rfc,dns', 'max:255', Rule::unique('users', 'email')->ignore($currentUsername, 'username')];
-    }
-
     $data = $request->validate([
-        'email' => $emailRules,
+        'email' => ['required', 'email:rfc,dns', 'max:255'],
         'invite_code' => ['nullable', 'string'],
         'current_username' => ['nullable', 'string'],
     ], [
         'email.required' => 'Email wajib diisi.',
         'email.email' => 'Format email tidak valid.',
-        'email.unique' => 'Email sudah terdaftar.',
     ]);
+
+    $currentUsername = (string) ($data['current_username'] ?? '');
+    $email = strtolower(trim((string) $data['email']));
+
+    $existingEmailQuery = User::whereRaw('LOWER(email) = ?', [$email]);
+    if ($currentUsername !== '') {
+        $existingEmailQuery->where('username', '!=', $currentUsername);
+    }
+    if ($existingEmailQuery->exists()) {
+        return response()->json(['message' => 'Email Telah Terdaftar, Silahkan Hubungi Admin'], 422);
+    }
 
     if (!Auth::check()) {
         $invite = !empty($data['invite_code']) ? Cache::get('user_invite_' . $data['invite_code']) : null;
@@ -790,7 +918,6 @@ Route::post('/pengguna/email-otp', function (Request $request) {
         }
     }
 
-    $email = strtolower(trim($data['email']));
     $length = (int) (env('OTP_LENGTH') ?: 6);
     $code = str_pad((string) random_int(0, (10 ** $length) - 1), $length, '0', STR_PAD_LEFT);
     $expireMinutes = (int) (env('OTP_EXPIRE') ?: 5);
@@ -892,6 +1019,7 @@ Route::post('/pengguna', function (Request $request) {
     $user = new User($data);
 
     $user->save();
+    notify_admin_new_user_whatsapp($user);
 
     if ($otpEnabled) {
         $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
@@ -976,6 +1104,7 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
     $data['is_verified'] = false;
     $user = new User($data);
     $user->save();
+    notify_admin_new_user_whatsapp($user);
 
     if ($otpEnabled) {
         $request->session()->forget(['otp_code', 'otp_phone', 'otp_expires']);
@@ -2745,6 +2874,76 @@ Route::get('/profile', function (Request $request) {
     $token = profile_token_encode((string) $profile->id);
     return view('profile.index', compact('profile', 'user', 'token'));
 })->name('profile.home')->middleware('auth');
+
+Route::get('/profile/golongan', function (Request $request) {
+    $user = auth()->user();
+    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    if (!$profile) {
+        return redirect()->route('profile.create');
+    }
+    $token = profile_token_encode((string) $profile->id);
+    return view('profile.golongan', compact('profile', 'user', 'token'));
+})->name('profile.golongan')->middleware('auth');
+
+Route::get('/profile/jabatan', function (Request $request) {
+    $user = auth()->user();
+    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    if (!$profile) {
+        return redirect()->route('profile.create');
+    }
+    $token = profile_token_encode((string) $profile->id);
+    return view('profile.jabatan', compact('profile', 'user', 'token'));
+})->name('profile.jabatan')->middleware('auth');
+
+Route::get('/profile/posisi', function (Request $request) {
+    $user = auth()->user();
+    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    if (!$profile) {
+        return redirect()->route('profile.create');
+    }
+    $token = profile_token_encode((string) $profile->id);
+    return view('profile.posisi', compact('profile', 'user', 'token'));
+})->name('profile.posisi')->middleware('auth');
+
+Route::get('/profile/pendidikan', function (Request $request) {
+    $user = auth()->user();
+    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    if (!$profile) {
+        return redirect()->route('profile.create');
+    }
+    $token = profile_token_encode((string) $profile->id);
+    return view('profile.pendidikan', compact('profile', 'user', 'token'));
+})->name('profile.pendidikan')->middleware('auth');
+
+Route::get('/profile/profesi', function (Request $request) {
+    $user = auth()->user();
+    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    if (!$profile) {
+        return redirect()->route('profile.create');
+    }
+    $token = profile_token_encode((string) $profile->id);
+    return view('profile.profesi', compact('profile', 'user', 'token'));
+})->name('profile.profesi')->middleware('auth');
+
+Route::get('/profile/keluarga', function (Request $request) {
+    $user = auth()->user();
+    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    if (!$profile) {
+        return redirect()->route('profile.create');
+    }
+    $token = profile_token_encode((string) $profile->id);
+    return view('profile.keluarga', compact('profile', 'user', 'token'));
+})->name('profile.keluarga')->middleware('auth');
+
+Route::get('/profile/pensiun', function (Request $request) {
+    $user = auth()->user();
+    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    if (!$profile) {
+        return redirect()->route('profile.create');
+    }
+    $token = profile_token_encode((string) $profile->id);
+    return view('profile.pensiun', compact('profile', 'user', 'token'));
+})->name('profile.pensiun')->middleware('auth');
 
 Route::get('/profile/tambah', function (Request $request) {
     $user = auth()->user();
