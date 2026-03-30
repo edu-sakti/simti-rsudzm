@@ -22,7 +22,6 @@ use App\Models\IpAddr;
 use App\Models\Device;
 use App\Models\DeviceSpec;
 use App\Models\HelpdeskTicket;
-use App\Models\RolePermission;
 use App\Models\Role;
 
 if (!function_exists('ticket_token_encode')) {
@@ -389,78 +388,45 @@ if (!function_exists('generateRoomCode')) {
     }
 }
 
-if (!function_exists('hakAksesMenuGroups')) {
-    function hakAksesMenuGroups(): array
-    {
-        return [
-            'Umum' => [
-                ['key' => 'dashboard', 'label' => 'Dashboard', 'actions' => ['read']],
-                ['key' => 'laporan', 'label' => 'Laporan', 'actions' => ['read']],
-                ['key' => 'logout', 'label' => 'Keluar', 'actions' => ['read']],
-            ],
-            'Profil' => [
-                ['key' => 'profil', 'label' => 'Profil', 'actions' => ['read', 'update']],
-                ['key' => 'profil_data_pribadi', 'label' => 'Data Pribadi', 'actions' => ['read', 'update']],
-                ['key' => 'profil_kontak_darurat', 'label' => 'Kontak Darurat', 'actions' => ['read', 'update']],
-                ['key' => 'profil_riwayat', 'label' => 'Riwayat', 'actions' => ['read']],
-                ['key' => 'profil_riwayat_pendidikan', 'label' => 'Riwayat Pendidikan', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'profil_riwayat_kerja', 'label' => 'Riwayat Kerja', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'profil_keprofesian', 'label' => 'Keprofesian', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'profil_data_pendukung', 'label' => 'Data Pendukung', 'actions' => ['read', 'create', 'update', 'delete']],
-            ],
-            'Helpdesk' => [
-                ['key' => 'helpdesk', 'label' => 'Tiket', 'actions' => ['read', 'create', 'update', 'delete']],
-            ],
-            'Persuratan' => [
-                ['key' => 'surat_masuk', 'label' => 'Surat Masuk', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'surat_keluar', 'label' => 'Surat Keluar', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'disposisi', 'label' => 'Disposisi', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'arsip_surat', 'label' => 'Arsip Surat', 'actions' => ['read', 'create', 'update', 'delete']],
-            ],
-            'Kepegawaian' => [
-                ['key' => 'data_pegawai', 'label' => 'Data Pegawai', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'pegawai_pns', 'label' => 'PNS', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'pegawai_pppk', 'label' => 'PPPK', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'riwayat_pegawai', 'label' => 'Riwayat Pegawai', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'riwayat_pendidikan', 'label' => 'Pendidikan', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'riwayat_pangkat', 'label' => 'Pangkat / Golongan', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'riwayat_mutasi', 'label' => 'Mutasi', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'riwayat_pelatihan', 'label' => 'Pelatihan', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'jabatan', 'label' => 'Jabatan Pegawai', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'legalitas_sip', 'label' => 'SIP', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'legalitas_str', 'label' => 'STR', 'actions' => ['read', 'create', 'update', 'delete']],
-            ],
-            'Pengajuan' => [
-                ['key' => 'pengajuan', 'label' => 'Pengajuan', 'actions' => ['read', 'create', 'update', 'delete']],
-            ],
-            'Pengaduan' => [
-                ['key' => 'pengaduan_data', 'label' => 'Pengaduan', 'actions' => ['read', 'create', 'update', 'delete']],
-            ],
-            'Pengguna' => [
-                ['key' => 'pengguna', 'label' => 'Pengguna', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'peran_pengguna', 'label' => 'Peran', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'hak_akses', 'label' => 'Hak Akses', 'actions' => ['read', 'update']],
-            ],
-            'Master Data' => [
-                ['key' => 'ip_address', 'label' => 'IP Address', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'perangkat', 'label' => 'Perangkat', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'isp', 'label' => 'ISP', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'cctv', 'label' => 'CCTV', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'ruangan', 'label' => 'Ruangan', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'pj_ruangan', 'label' => 'PJ Ruangan', 'actions' => ['read', 'create', 'update', 'delete']],
-                ['key' => 'roles', 'label' => 'Peran', 'actions' => ['read', 'create', 'update', 'delete']],
-            ],
-            'Setting' => [
-                ['key' => 'wa_gateway', 'label' => 'WA Gateway', 'actions' => ['read', 'update']],
-                ['key' => 'log_aktivitas', 'label' => 'Log Aktivitas', 'actions' => ['read']],
-            ],
-        ];
-    }
-}
-
 // ---------------- Pengajuan ----------------
 Route::get('/pengajuan', function () {
-    return view('pengajuan.index');
+    $user = auth()->user();
+
+    $pegawai = DB::table('pegawai')->where('id', $user->id)->first();
+    $roleName = DB::table('roles')->where('id', $user->role_id)->value('name');
+    $ruanganName = DB::table('room_users as ru')
+        ->leftJoin('rooms as r', 'r.id', '=', 'ru.room_id')
+        ->where('ru.user_id', $user->id)
+        ->orderBy('ru.id')
+        ->value('r.name');
+
+    $jabatanDefault = trim((string) ($roleName ?? ''));
+    if ($jabatanDefault !== '' && !empty($ruanganName)) {
+        $roleSlug = Str::slug($jabatanDefault, '-');
+        if (in_array($roleSlug, ['petugas', 'kepala'], true)) {
+            $jabatanDefault .= ' ' . $ruanganName;
+        }
+    }
+
+    $rawPhone = (string) ($user->phone ?? '');
+    $phoneDisplay = preg_replace('/^62/', '0', $rawPhone);
+
+    $suratCutiDefaults = [
+        'nama' => $pegawai->nama ?? $user->name ?? '',
+        'jabatan' => $jabatanDefault,
+        'nip' => '',
+        'masa_kerja_tahun' => '',
+        'masa_kerja_bulan' => '',
+        'jenis_cuti' => '',
+        'alasan_cuti' => '',
+        'lama_hari' => '',
+        'mulai_tanggal' => '',
+        'sampai_tanggal' => '',
+        'telp' => $phoneDisplay ?: '-',
+        'alamat_cuti' => $pegawai->alamat ?? '',
+    ];
+
+    return view('pengajuan.index', compact('suratCutiDefaults'));
 })->name('pengajuan.index')->middleware(['auth', 'permission:pengajuan,read']);
 
 // ---------------- Pengguna ----------------
@@ -477,7 +443,7 @@ Route::get('/pengguna', function (Request $request) {
         ->withQueryString();
 
     return view('users.index', compact('users', 'search'));
-})->name('users.index')->middleware(['auth', 'admin']);
+})->name('users.index')->middleware(['auth']);
 
 Route::get('/peran-pengguna', function (Request $request) {
     $search = trim((string) $request->query('q', ''));
@@ -512,7 +478,7 @@ Route::get('/peran-pengguna', function (Request $request) {
         ->withQueryString();
 
     return view('peran.index', compact('peranPengguna', 'search'));
-})->name('peran.index')->middleware(['auth', 'admin']);
+})->name('peran.index')->middleware(['auth']);
 
 Route::get('/peran/create', function () {
     $users = DB::table('users')
@@ -539,7 +505,7 @@ Route::get('/peran/create', function () {
         ->get();
 
     return view('peran.create', compact('users', 'roles', 'rooms'));
-})->name('peran.create')->middleware(['auth', 'admin']);
+})->name('peran.create')->middleware(['auth']);
 
 Route::post('/peran', function (Request $request) {
     $data = $request->validate([
@@ -612,11 +578,11 @@ Route::post('/peran', function (Request $request) {
     }
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil ditambahkan.');
-})->name('peran.store')->middleware(['auth', 'admin']);
+})->name('peran.store')->middleware(['auth']);
 
 Route::get('/peran/{id}/edit', function (int $id) {
     return redirect()->route('peran.edit', peran_token_encode((string) $id));
-})->whereNumber('id')->middleware(['auth', 'admin']);
+})->whereNumber('id')->middleware(['auth']);
 
 Route::get('/peran/{token}/edit', function (string $token) {
     try {
@@ -664,7 +630,7 @@ Route::get('/peran/{token}/edit', function (string $token) {
     }
 
     return view('peran.edit', compact('peran', 'users', 'roles', 'rooms', 'selectedRoomId', 'token'));
-})->name('peran.edit')->middleware(['auth', 'admin']);
+})->name('peran.edit')->middleware(['auth']);
 
 Route::put('/peran/{id}', function (Request $request, string $id) {
     $data = $request->validate([
@@ -718,7 +684,7 @@ Route::put('/peran/{id}', function (Request $request, string $id) {
     }
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil diperbarui.');
-})->name('peran.update')->middleware(['auth', 'admin']);
+})->name('peran.update')->middleware(['auth']);
 
 Route::delete('/peran/{id}', function (string $id) {
     $user = DB::table('users')
@@ -744,7 +710,7 @@ Route::delete('/peran/{id}', function (string $id) {
     DB::table('room_users')->where('user_id', $id)->delete();
 
     return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil dihapus.');
-})->name('peran.destroy')->middleware(['auth', 'admin']);
+})->name('peran.destroy')->middleware(['auth']);
 
 Route::get('/pengguna/tambah-link', function (Request $request) {
     $code = bin2hex(random_bytes(16));
@@ -756,7 +722,7 @@ Route::get('/pengguna/tambah-link', function (Request $request) {
         return response()->json(['link' => $link]);
     }
     return redirect()->to($link);
-})->name('users.invite')->middleware(['auth', 'admin']);
+})->name('users.invite')->middleware(['auth']);
 
 Route::post('/pengguna/tambah-link/kirim', function (Request $request) {
     $data = $request->validate([
@@ -807,12 +773,12 @@ Route::post('/pengguna/tambah-link/kirim', function (Request $request) {
         'link' => $link,
         'phone' => $rawPhone,
     ]);
-})->name('users.invite.send')->middleware(['auth', 'admin']);
+})->name('users.invite.send')->middleware(['auth']);
 
 Route::get('/pengguna/tambah', function () {
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
     return view('users.create', compact('rooms'));
-})->name('users.create')->middleware(['auth', 'admin']);
+})->name('users.create')->middleware(['auth']);
 
 Route::get('/pengguna/tambah/{token}', function (string $token) {
     $invite = Cache::get('user_invite_' . $token);
@@ -827,7 +793,7 @@ Route::get('/pengguna/tambah/{token}', function (string $token) {
 })->name('users.create.invite');
 
 Route::post('/pengguna/otp', function (Request $request) {
-    if (!filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN)) {
+    if (!filter_var(env('OTP_PHONE_ENABLED', env('OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN)) {
         return response()->json(['message' => 'OTP sedang dinonaktifkan.'], 400);
     }
     $data = $request->validate([
@@ -887,7 +853,7 @@ Route::post('/pengguna/otp', function (Request $request) {
 })->name('users.otp');
 
 Route::post('/pengguna/email-otp', function (Request $request) {
-    if (!filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN)) {
+    if (!filter_var(env('OTP_EMAIL_ENABLED', env('EMAIL_OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN)) {
         return response()->json(['message' => 'OTP Email sedang dinonaktifkan.'], 400);
     }
 
@@ -951,8 +917,8 @@ Route::post('/pengguna/email-otp', function (Request $request) {
 })->name('users.email-otp');
 
 Route::post('/pengguna', function (Request $request) {
-    $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
-    $emailOtpEnabled = filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+    $otpEnabled = filter_var(env('OTP_PHONE_ENABLED', env('OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN);
+    $emailOtpEnabled = filter_var(env('OTP_EMAIL_ENABLED', env('EMAIL_OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
@@ -1028,7 +994,7 @@ Route::post('/pengguna', function (Request $request) {
         $request->session()->forget(['email_otp_code', 'email_otp_email', 'email_otp_expires']);
     }
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil ditambahkan.');
-})->name('users.store')->middleware(['auth', 'admin']);
+})->name('users.store')->middleware(['auth']);
 
 Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode) {
     $invite = Cache::get('user_invite_' . $kode);
@@ -1036,8 +1002,8 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         abort(403);
     }
     $request->merge(['invite_code' => $kode]);
-    $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
-    $emailOtpEnabled = filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+    $otpEnabled = filter_var(env('OTP_PHONE_ENABLED', env('OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN);
+    $emailOtpEnabled = filter_var(env('OTP_EMAIL_ENABLED', env('EMAIL_OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
@@ -1155,7 +1121,7 @@ Route::match(['get', 'post'], '/test-email', function (Request $request) {
     }
 
     return response("Email test berhasil dikirim ke {$to}.", 200);
-})->name('mail.test')->middleware(['auth', 'admin']);
+})->name('mail.test')->middleware(['auth']);
 
 Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
     try {
@@ -1166,7 +1132,7 @@ Route::get('/pengguna/{encoded}/edit', function (string $encoded) {
     $user = User::findOrFail($username);
     $rooms = Room::orderBy('room_id')->get(['id','room_id','name']);
     return view('users.edit', ['user' => $user, 'encoded' => $encoded, 'rooms' => $rooms]);
-})->name('users.edit')->middleware(['auth', 'admin']);
+})->name('users.edit')->middleware(['auth']);
 
 Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     try {
@@ -1176,8 +1142,8 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     }
     $user = User::findOrFail($username);
 
-    $otpEnabled = filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
-    $emailOtpEnabled = filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+    $otpEnabled = filter_var(env('OTP_PHONE_ENABLED', env('OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN);
+    $emailOtpEnabled = filter_var(env('OTP_EMAIL_ENABLED', env('EMAIL_OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN);
     $data = $request->validate([
         'name' => ['required', 'string', 'max:255'],
         'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user->username, 'username')],
@@ -1263,7 +1229,7 @@ Route::put('/pengguna/{encoded}', function (Request $request, string $encoded) {
     $user->update($data);
 
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil diperbarui.');
-})->name('users.update')->middleware(['auth', 'admin']);
+})->name('users.update')->middleware(['auth']);
 
 Route::delete('/pengguna/{encoded}', function (string $encoded) {
     try {
@@ -1274,7 +1240,7 @@ Route::delete('/pengguna/{encoded}', function (string $encoded) {
     $user = User::findOrFail($username);
     $user->delete();
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil dihapus.');
-})->name('users.destroy')->middleware(['auth', 'admin']);
+})->name('users.destroy')->middleware(['auth']);
 
 Route::post('/pengguna/{encoded}/validasi', function (string $encoded, Request $request) {
     if (!auth()->check() || !(auth()->user()->is_admin ?? false)) {
@@ -1302,7 +1268,7 @@ Route::post('/pengguna/{encoded}/validasi', function (string $encoded, Request $
         }
     }
     return redirect()->route('users.index')->with('success', 'Pengguna berhasil divalidasi.');
-})->name('users.verify')->middleware(['auth', 'admin']);
+})->name('users.verify')->middleware(['auth']);
 
 // ---------------- Ruangan ----------------
 Route::get('/ruangan', function (Request $request) use ($roomCategories) {
@@ -1696,111 +1662,6 @@ Route::delete('/ruangan/{encoded}', function (string $encoded) {
 
     return redirect()->route('rooms.index')->with('success', 'Ruangan berhasil dihapus.');
 })->name('rooms.destroy')->middleware(['auth', 'permission:ruangan,delete']);
-
-// ---------------- Hak Akses ----------------
-Route::get('/hak-akses', function () {
-    $menuGroups = hakAksesMenuGroups();
-    $roles = Role::orderBy('id')->get();
-    return view('hak-akses.index', compact('menuGroups', 'roles'));
-})->name('hakakses.index')->middleware(['auth', 'admin']);
-
-Route::get('/hak-akses/permissions', function (Request $request) {
-    $data = $request->validate([
-        'role_id' => ['required', 'integer', 'exists:roles,id'],
-    ]);
-
-    $menuGroups = hakAksesMenuGroups();
-    $menus = collect($menuGroups)->flatten(1)->pluck('key')->values();
-    $existing = RolePermission::where('role_id', $data['role_id'])->get()->keyBy('menu');
-
-    $permissions = [];
-    foreach ($menus as $menu) {
-        $row = $existing->get($menu);
-        $permissions[$menu] = [
-            'can_read' => (bool) ($row->can_read ?? false),
-            'can_create' => (bool) ($row->can_create ?? false),
-            'can_update' => (bool) ($row->can_update ?? false),
-            'can_delete' => (bool) ($row->can_delete ?? false),
-        ];
-    }
-
-    return response()->json(['permissions' => $permissions]);
-})->name('hakakses.permissions')->middleware(['auth', 'admin']);
-
-Route::post('/hak-akses/permissions', function (Request $request) {
-    $data = $request->validate([
-        'role_id' => ['required', 'integer', 'exists:roles,id'],
-        'menu' => ['required', 'string'],
-        'action' => ['required', 'in:read,create,update,delete'],
-        'value' => ['required', 'boolean'],
-    ]);
-    $menuGroups = hakAksesMenuGroups();
-    $menuKeys = collect($menuGroups)->flatten(1)->pluck('key')->values()->all();
-    if (!in_array($data['menu'], $menuKeys, true)) {
-        return response()->json(['message' => 'Menu tidak valid.'], 422);
-    }
-
-    $permission = RolePermission::firstOrNew([
-        'role_id' => $data['role_id'],
-        'menu' => $data['menu'],
-    ]);
-
-    $field = 'can_' . $data['action'];
-    $permission->{$field} = (bool) $data['value'];
-    $permission->save();
-
-    return response()->json(['ok' => true]);
-})->name('hakakses.permissions.save')->middleware(['auth', 'admin']);
-
-Route::post('/hak-akses/permissions/bulk', function (Request $request) {
-    $data = $request->validate([
-        'role_id' => ['required', 'integer', 'exists:roles,id'],
-        'value' => ['required', 'boolean'],
-    ]);
-    $menuGroups = hakAksesMenuGroups();
-    foreach ($menuGroups as $menus) {
-        foreach ($menus as $menu) {
-            $actions = $menu['actions'] ?? [];
-            RolePermission::updateOrCreate(
-                ['role_id' => $data['role_id'], 'menu' => $menu['key']],
-                [
-                    'can_read' => in_array('read', $actions, true) ? (bool) $data['value'] : false,
-                    'can_create' => in_array('create', $actions, true) ? (bool) $data['value'] : false,
-                    'can_update' => in_array('update', $actions, true) ? (bool) $data['value'] : false,
-                    'can_delete' => in_array('delete', $actions, true) ? (bool) $data['value'] : false,
-                ]
-            );
-        }
-    }
-
-    return response()->json(['ok' => true]);
-})->name('hakakses.permissions.bulk')->middleware(['auth', 'admin']);
-
-Route::post('/hak-akses/permissions/save', function (Request $request) {
-    $data = $request->validate([
-        'role_id' => ['required', 'integer', 'exists:roles,id'],
-        'permissions' => ['required', 'array'],
-    ]);
-    $menuGroups = hakAksesMenuGroups();
-    foreach ($menuGroups as $menus) {
-        foreach ($menus as $menu) {
-            $payload = $data['permissions'][$menu['key']] ?? [];
-            $actions = $menu['actions'] ?? [];
-
-            RolePermission::updateOrCreate(
-                ['role_id' => $data['role_id'], 'menu' => $menu['key']],
-                [
-                    'can_read' => in_array('read', $actions, true) ? (bool) ($payload['read'] ?? false) : false,
-                    'can_create' => in_array('create', $actions, true) ? (bool) ($payload['create'] ?? false) : false,
-                    'can_update' => in_array('update', $actions, true) ? (bool) ($payload['update'] ?? false) : false,
-                    'can_delete' => in_array('delete', $actions, true) ? (bool) ($payload['delete'] ?? false) : false,
-                ]
-            );
-        }
-    }
-
-    return response()->json(['ok' => true]);
-})->name('hakakses.permissions.saveall')->middleware(['auth', 'admin']);
 
 // ---------------- CCTV ----------------
 Route::get('/cctv', function (Request $request) {
@@ -2392,7 +2253,7 @@ Route::get('/whatsapp-gateway', function () {
         'waPhone' => $status['phone'] ?? null,
         'waLastActiveAt' => $status['lastActiveAt'] ?? null,
     ]);
-})->name('wa.gateway')->middleware(['auth', 'admin']);
+})->name('wa.gateway')->middleware(['auth']);
 
 Route::post('/whatsapp-gateway/device/delete', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -2405,7 +2266,7 @@ Route::post('/whatsapp-gateway/device/delete', function () {
         return redirect()->route('wa.gateway')->with('error', 'Gateway belum berjalan.');
     }
     return redirect()->route('wa.gateway')->with('success', 'Device berhasil dihapus.');
-})->name('wa.gateway.delete')->middleware(['auth', 'admin']);
+})->name('wa.gateway.delete')->middleware(['auth']);
 
 Route::post('/whatsapp-gateway/connect', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -2418,7 +2279,7 @@ Route::post('/whatsapp-gateway/connect', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.connect')->middleware(['auth', 'admin']);
+})->name('wa.gateway.connect')->middleware(['auth']);
 
 Route::post('/whatsapp-gateway/disconnect', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -2431,7 +2292,7 @@ Route::post('/whatsapp-gateway/disconnect', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.disconnect')->middleware(['auth', 'admin']);
+})->name('wa.gateway.disconnect')->middleware(['auth']);
 
 Route::post('/whatsapp-gateway/reconnect', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -2445,7 +2306,7 @@ Route::post('/whatsapp-gateway/reconnect', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.reconnect')->middleware(['auth', 'admin']);
+})->name('wa.gateway.reconnect')->middleware(['auth']);
 
 Route::get('/whatsapp-gateway/qr', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -2458,7 +2319,7 @@ Route::get('/whatsapp-gateway/qr', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.qr')->middleware(['auth', 'admin']);
+})->name('wa.gateway.qr')->middleware(['auth']);
 
 Route::get('/whatsapp-gateway/status', function () {
     $baseUrl = env('WA_GATEWAY_URL', 'http://127.0.0.1:3001');
@@ -2471,7 +2332,7 @@ Route::get('/whatsapp-gateway/status', function () {
     } catch (\Throwable $e) {
         return response()->json(['ok' => false, 'message' => 'Gateway belum berjalan.'], 500);
     }
-})->name('wa.gateway.status')->middleware(['auth', 'admin']);
+})->name('wa.gateway.status')->middleware(['auth']);
 
 // ---------------- IP Address ----------------
 Route::get('/ip-address', function (Request $request) {
@@ -2864,102 +2725,101 @@ Route::delete('/perangkat/spesifikasi-perangkat/{device}', function (Device $dev
     return redirect()->route('device.index')->with('success', 'Spesifikasi perangkat berhasil dihapus.');
 })->name('device.spec.delete')->middleware(['auth', 'permission:spesifikasi_perangkat,delete']);
 
-// ---------------- Profile ----------------
-Route::get('/profile', function (Request $request) {
+// ---------------- Pegawai ----------------
+Route::get('/pegawai', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.index', compact('profile', 'user', 'token'));
-})->name('profile.home')->middleware('auth');
+    return view('pegawai.index', compact('profile', 'user', 'token'));
+})->name('pegawai.home')->middleware('auth');
 
-Route::get('/profile/golongan', function (Request $request) {
+Route::get('/pegawai/golongan', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.golongan', compact('profile', 'user', 'token'));
-})->name('profile.golongan')->middleware('auth');
+    return view('pegawai.golongan', compact('profile', 'user', 'token'));
+})->name('pegawai.golongan')->middleware('auth');
 
-Route::get('/profile/jabatan', function (Request $request) {
+Route::get('/pegawai/jabatan', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.jabatan', compact('profile', 'user', 'token'));
-})->name('profile.jabatan')->middleware('auth');
+    return view('pegawai.jabatan', compact('profile', 'user', 'token'));
+})->name('pegawai.jabatan')->middleware('auth');
 
-Route::get('/profile/posisi', function (Request $request) {
+Route::get('/pegawai/posisi', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.posisi', compact('profile', 'user', 'token'));
-})->name('profile.posisi')->middleware('auth');
+    return view('pegawai.posisi', compact('profile', 'user', 'token'));
+})->name('pegawai.posisi')->middleware('auth');
 
-Route::get('/profile/pendidikan', function (Request $request) {
+Route::get('/pegawai/pendidikan', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.pendidikan', compact('profile', 'user', 'token'));
-})->name('profile.pendidikan')->middleware('auth');
+    return view('pegawai.pendidikan', compact('profile', 'user', 'token'));
+})->name('pegawai.pendidikan')->middleware('auth');
 
-Route::get('/profile/profesi', function (Request $request) {
+Route::get('/pegawai/profesi', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.profesi', compact('profile', 'user', 'token'));
-})->name('profile.profesi')->middleware('auth');
+    return view('pegawai.profesi', compact('profile', 'user', 'token'));
+})->name('pegawai.profesi')->middleware('auth');
 
-Route::get('/profile/keluarga', function (Request $request) {
+Route::get('/pegawai/keluarga', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.keluarga', compact('profile', 'user', 'token'));
-})->name('profile.keluarga')->middleware('auth');
+    return view('pegawai.keluarga', compact('profile', 'user', 'token'));
+})->name('pegawai.keluarga')->middleware('auth');
 
-Route::get('/profile/pensiun', function (Request $request) {
+Route::get('/pegawai/pensiun', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if (!$profile) {
-        return redirect()->route('profile.create');
+        return redirect()->route('pegawai.create');
     }
     $token = profile_token_encode((string) $profile->id);
-    return view('profile.pensiun', compact('profile', 'user', 'token'));
-})->name('profile.pensiun')->middleware('auth');
+    return view('pegawai.pensiun', compact('profile', 'user', 'token'));
+})->name('pegawai.pensiun')->middleware('auth');
 
-Route::get('/profile/tambah', function (Request $request) {
+Route::get('/pegawai/tambah', function (Request $request) {
     $user = auth()->user();
-    $profile = DB::table('profiles')->where('user_id', $user->id)->first();
+    $profile = DB::table('pegawai')->where('id', $user->id)->first();
     if ($profile) {
-        return redirect()->route('profile.edit', profile_token_encode((string) $profile->id));
+        return redirect()->route('pegawai.edit', profile_token_encode((string) $profile->id));
     }
-    return view('profile.create', compact('user'));
-})->name('profile.create')->middleware('auth');
+    return view('pegawai.create', compact('user'));
+})->name('pegawai.create')->middleware('auth');
 
-Route::post('/profile', function (Request $request) {
+Route::post('/pegawai', function (Request $request) {
     $user = auth()->user();
-    $exists = DB::table('profiles')->where('user_id', $user->id)->exists();
+    $exists = DB::table('pegawai')->where('id', $user->id)->exists();
     if ($exists) {
-        $profileId = (string) DB::table('profiles')->where('user_id', $user->id)->value('id');
-        return redirect()->route('profile.edit', profile_token_encode($profileId));
+        return redirect()->route('pegawai.edit', profile_token_encode((string) $user->id));
     }
 
     $data = $request->validate([
@@ -2976,8 +2836,8 @@ Route::post('/profile', function (Request $request) {
         'alamat' => ['nullable', 'string'],
     ]);
 
-    DB::table('profiles')->insert([
-        'user_id' => $user->id,
+    DB::table('pegawai')->insert([
+        'id' => $user->id,
         'nama' => $data['nama'],
         'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
         'tempat_lahir' => $data['tempat_lahir'] ?? null,
@@ -2998,44 +2858,48 @@ Route::post('/profile', function (Request $request) {
         'updated_at' => now(),
     ]);
 
-    $profileId = (string) DB::table('profiles')->where('user_id', $user->id)->value('id');
-    return redirect()->route('profile.edit', profile_token_encode($profileId))
-        ->with('success', 'Profil berhasil disimpan.');
-})->name('profile.store')->middleware('auth');
+    return redirect()->route('pegawai.edit', profile_token_encode((string) $user->id))
+        ->with('success', 'Pegawai berhasil disimpan.');
+})->name('pegawai.store')->middleware('auth');
 
-Route::get('/profile/{id}/edit', function (Request $request, int $id) {
-    return redirect()->route('profile.edit', profile_token_encode((string) $id));
+Route::get('/pegawai/{id}/edit', function (Request $request, int $id) {
+    return redirect()->route('pegawai.edit', profile_token_encode((string) $id));
 })->whereNumber('id')->middleware('auth');
 
-Route::get('/profile/{token}/edit', function (Request $request, string $token) {
+Route::get('/pegawai/{token}/edit', function (Request $request, string $token) {
     $user = auth()->user();
     try {
         $id = profile_token_decode($token);
     } catch (\Throwable $e) {
         abort(404);
     }
-    $profile = DB::table('profiles')->where('id', $id)->first();
+
+    $profile = DB::table('pegawai')->where('id', $id)->first();
     if (!$profile) {
         abort(404);
     }
-    if (!$user->is_admin && (int) $profile->user_id !== (int) $user->id) {
+
+    if (!$user->is_admin && (int) $profile->id !== (int) $user->id) {
         abort(403);
     }
-    return view('profile.edit-data-utama', compact('profile', 'user', 'token'));
-})->name('profile.edit')->middleware('auth');
 
-Route::put('/profile/{token}', function (Request $request, string $token) {
+    return view('pegawai.edit-data-utama', compact('profile', 'user', 'token'));
+})->name('pegawai.edit')->middleware('auth');
+
+Route::put('/pegawai/{token}', function (Request $request, string $token) {
     $user = auth()->user();
     try {
         $id = profile_token_decode($token);
     } catch (\Throwable $e) {
         abort(404);
     }
-    $profile = DB::table('profiles')->where('id', $id)->first();
+
+    $profile = DB::table('pegawai')->where('id', $id)->first();
     if (!$profile) {
         abort(404);
     }
-    if (!$user->is_admin && (int) $profile->user_id !== (int) $user->id) {
+
+    if (!$user->is_admin && (int) $profile->id !== (int) $user->id) {
         abort(403);
     }
 
@@ -3053,7 +2917,7 @@ Route::put('/profile/{token}', function (Request $request, string $token) {
         'alamat' => ['nullable', 'string'],
     ]);
 
-    DB::table('profiles')->where('id', $id)->update([
+    DB::table('pegawai')->where('id', $id)->update([
         'nama' => $data['nama'],
         'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
         'tempat_lahir' => $data['tempat_lahir'] ?? null,
@@ -3068,14 +2932,13 @@ Route::put('/profile/{token}', function (Request $request, string $token) {
         'updated_at' => now(),
     ]);
 
-    DB::table('users')->where('id', $profile->user_id)->update([
+    DB::table('users')->where('id', $profile->id)->update([
         'name' => $data['nama'],
         'updated_at' => now(),
     ]);
 
-    return redirect()->route('profile.home')->with('success', 'Profil berhasil diperbarui.');
-})->name('profile.update')->middleware('auth');
-
+    return redirect()->route('pegawai.home')->with('success', 'Data pegawai berhasil diperbarui.');
+})->name('pegawai.update')->middleware('auth');
 // ---------------- Lainnya ----------------
 
 Route::get('/auth/login', function () {
@@ -3304,3 +3167,10 @@ Route::post('/auth/logout', function (Request $request) {
     $request->session()->regenerateToken();
     return redirect('/')->with('success', 'Anda telah keluar.');
 })->name('logout')->middleware('auth');
+
+
+
+
+
+
+

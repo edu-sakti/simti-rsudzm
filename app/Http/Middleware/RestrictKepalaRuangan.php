@@ -10,20 +10,7 @@ class RestrictKepalaRuangan
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()->check() && auth()->user()->role_key === 'kepala_ruangan') {
-            if (
-                $request->is('/') ||
-                $request->is('home') ||
-                $request->is('helpdesk') ||
-                $request->is('laporan') ||
-                $request->is('auth/logout')
-            ) {
-                return $next($request);
-            }
-
-            abort(403);
-        }
-
+        // Nonaktifkan pembatasan kepala ruangan: semua user login boleh akses semua route.
         return $next($request);
     }
 }

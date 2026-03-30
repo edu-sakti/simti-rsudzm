@@ -131,6 +131,14 @@
         padding-top: 14px;
     }
 
+    .pengajuan-search-input {
+        max-width: 520px;
+        height: 38px;
+        border-radius: 999px;
+        border: 1px solid #b8c7f5;
+        padding: 0 18px;
+    }
+
     @media (max-width: 768px) {
         .accordion-premium .accordion-button {
             min-height: 52px;
@@ -149,6 +157,14 @@
 
     <div class="card pengajuan-card">
         <div class="card-body">
+            <div class="mb-3">
+                <input
+                    type="text"
+                    id="searchAccordionHeader"
+                    class="form-control pengajuan-search-input"
+                    placeholder="Cari jenis pengajuan...">
+            </div>
+
             <div class="accordion accordion-premium" id="accordionPengajuan">
 
                 <div class="accordion-item">
@@ -204,6 +220,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('searchAccordionHeader');
         const accordionItems = document.querySelectorAll('#accordionPengajuan .accordion-item');
 
         accordionItems.forEach((item) => {
@@ -221,6 +238,19 @@
                 item.classList.add('active-item');
             }
         });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                const keyword = (this.value || '').toLowerCase().trim();
+
+                accordionItems.forEach((item) => {
+                    const titleEl = item.querySelector('.accordion-button > span');
+                    const title = (titleEl?.textContent || '').toLowerCase().trim();
+                    const isMatch = keyword === '' || title.includes(keyword);
+                    item.style.display = isMatch ? '' : 'none';
+                });
+            });
+        }
     });
 </script>
 @endsection

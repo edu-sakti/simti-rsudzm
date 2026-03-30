@@ -11,7 +11,7 @@
             <h5 class="card-title mb-0">Form Profil</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('profile.update', $token) }}">
+            <form method="POST" action="{{ route('pegawai.update', $token) }}">
                 @csrf
                 @method('PUT')
 
@@ -138,7 +138,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i data-feather="save"></i> Simpan
                     </button>
-                    <a href="{{ url('/profile') }}" class="btn btn-outline-secondary">Batal</a>
+                    <a href="{{ url('/pegawai') }}" class="btn btn-outline-secondary">Batal</a>
                 </div>
             </form>
         </div>
@@ -331,3 +331,4 @@
   @endif
 </script>
 @endpush
+

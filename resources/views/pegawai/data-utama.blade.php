@@ -60,7 +60,7 @@
             </div>
 
             <div class="col-12 mt-2 d-flex align-items-center gap-2">
-                <a href="{{ route('profile.edit', $token) }}" class="btn btn-primary">
+                <a href="{{ route('pegawai.edit', $token) }}" class="btn btn-primary">
                     <i data-feather="edit-2"></i> Edit Profil
                 </a>
                 @if(!(auth()->user()->is_admin ?? false))
@@ -72,3 +72,4 @@
         </div>
     </div>
 </div>
+

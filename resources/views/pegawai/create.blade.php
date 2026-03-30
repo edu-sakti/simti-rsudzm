@@ -11,7 +11,7 @@
             <h5 class="card-title mb-0">Form Profil</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ route('profile.store') }}">
+            <form method="POST" action="{{ route('pegawai.store') }}">
                 @csrf
 
                 <div class="row g-3">
@@ -317,3 +317,4 @@
   @endif
 </script>
 @endpush
+

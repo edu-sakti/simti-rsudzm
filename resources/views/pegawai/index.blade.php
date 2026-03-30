@@ -6,9 +6,9 @@
 <div class="container-fluid p-0">
     <h1 class="h3 mb-3">Profil</h1>
 
-    @include('profile._tabs', ['activeTab' => 'data-utama'])
+    @include('pegawai._tabs', ['activeTab' => 'data-utama'])
 
-    @include('profile.data-utama', ['profile' => $profile])
+    @include('pegawai.data-utama', ['profile' => $profile])
 </div>
 @endsection
 
@@ -93,3 +93,4 @@
   resolveWilayahLabels();
 </script>
 @endpush
+

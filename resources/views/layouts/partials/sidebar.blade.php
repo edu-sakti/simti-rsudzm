@@ -6,20 +6,16 @@
 
         @php
             $user = auth()->user();
-            $isAdmin = (bool) ($user->is_admin ?? false);
             $roleId = $user->role_id ?? null;
+            $hasPermissionTable = \Illuminate\Support\Facades\Schema::hasTable('role_permissions');
 
             $permissionMap = collect();
-            if ($roleId && !$isAdmin) {
+            if ($roleId && $hasPermissionTable) {
                 $permissionMap = \App\Models\RolePermission::where('role_id', $roleId)->get()->keyBy('menu');
             }
 
-            $canAccess = function (?string $permission = null, bool $adminOnly = false) use ($isAdmin, $permissionMap): bool {
-                if ($adminOnly) {
-                    return $isAdmin;
-                }
-
-                if ($isAdmin) {
+            $canAccess = function (?string $permission = null) use ($permissionMap, $hasPermissionTable): bool {
+                if (!$hasPermissionTable) {
                     return true;
                 }
 
@@ -45,12 +41,6 @@
                     'header' => 'Umum',
                     'items' => [
                         ['type' => 'link', 'label' => 'Dashboard', 'icon' => 'home', 'url' => url('/dashboard'), 'patterns' => ['dashboard'], 'permission' => 'dashboard'],
-                    ],
-                ],
-                [
-                    'header' => 'Profil',
-                    'items' => [
-                        ['type' => 'link', 'label' => 'Profil', 'icon' => 'user', 'url' => url('/profile'), 'patterns' => ['profile', 'profile/*']],
                     ],
                 ],
                 [
@@ -91,11 +81,9 @@
                 ],
                 [
                     'header' => 'Pengguna',
-                    'adminOnly' => true,
                     'items' => [
                         ['type' => 'link', 'label' => 'Pengguna', 'icon' => 'users', 'url' => url('/pengguna'), 'patterns' => ['pengguna']],
                         ['type' => 'link', 'label' => 'Peran', 'icon' => 'user-check', 'url' => url('/peran-pengguna'), 'patterns' => ['peran-pengguna']],
-                        ['type' => 'link', 'label' => 'Hak Akses', 'icon' => 'shield', 'url' => url('/hak-akses'), 'patterns' => ['hak-akses']],
                     ],
                 ],
                 [
@@ -112,7 +100,6 @@
                 ],
                 [
                     'header' => 'Setting',
-                    'adminOnly' => true,
                     'items' => [
                         ['type' => 'link', 'label' => 'WA Gateway', 'icon' => 'message-square', 'url' => url('/whatsapp-gateway'), 'patterns' => ['whatsapp-gateway']],
                         ['type' => 'link', 'label' => 'Log Aktivitas', 'icon' => 'activity', 'url' => url('/logs'), 'patterns' => ['logs']],
@@ -135,10 +122,6 @@
 
         <ul class="sidebar-nav">
             @foreach ($sections as $section)
-                @if (!empty($section['adminOnly']) && !$canAccess(null, true))
-                    @continue
-                @endif
-
                 @php
                     $renderItems = [];
                     foreach ($section['items'] as $item) {

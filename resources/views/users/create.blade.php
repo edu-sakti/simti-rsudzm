@@ -49,7 +49,7 @@
               <label for="email" class="form-label">Email</label>
               <div class="input-group">
                 <input type="email" id="email" name="email" class="form-control" placeholder="Masukkan email aktif" value="{{ old('email') }}" required>
-                @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+                @if(filter_var(env('OTP_EMAIL_ENABLED', env('EMAIL_OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN))
                   <button class="btn btn-outline-primary" type="button" id="btn-email-otp">OTP Email</button>
                 @endif
               </div>
@@ -64,7 +64,7 @@
               <label for="phone" class="form-label">No Telepon</label>
             <div class="input-group">
               <input type="text" id="phone" name="phone" class="form-control" placeholder="contoh: 62812xxxxxxx atau 0812xxxxxxx" value="{{ old('phone') }}" required>
-              @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+              @if(filter_var(env('OTP_PHONE_ENABLED', env('OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN))
                 <button class="btn btn-outline-primary" type="button" id="btn-otp">OTP</button>
               @endif
             </div>
@@ -75,7 +75,7 @@
             </div>
 
             {{-- Input OTP Telepon --}}
-            @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+            @if(filter_var(env('OTP_PHONE_ENABLED', env('OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN))
               <div class="col-md-6">
                 <label for="otp_code" class="form-label">Kode OTP Telepon</label>
                 <input type="text" id="otp_code" name="otp_code" class="form-control" placeholder="Masukkan kode OTP Telepon" value="{{ old('otp_code') }}" required>
@@ -85,7 +85,7 @@
               </div>
             @endif
 
-            @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+            @if(filter_var(env('OTP_EMAIL_ENABLED', env('EMAIL_OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN))
               <div class="col-md-6">
                 <label for="email_otp_code" class="form-label">Kode OTP Email</label>
                 <input type="text" id="email_otp_code" name="email_otp_code" class="form-control" placeholder="Masukkan kode OTP Email" value="{{ old('email_otp_code') }}" required>
@@ -141,7 +141,7 @@
     feather.replace();
   }
 
-  @if(filter_var(env('OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+  @if(filter_var(env('OTP_PHONE_ENABLED', env('OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN))
   (function () {
     const btnOtp = document.getElementById('btn-otp');
     const phoneInput = document.getElementById('phone');
@@ -179,7 +179,7 @@
   })();
   @endif
 
-  @if(filter_var(env('EMAIL_OTP_ENABLED', true), FILTER_VALIDATE_BOOLEAN))
+  @if(filter_var(env('OTP_EMAIL_ENABLED', env('EMAIL_OTP_ENABLED', true)), FILTER_VALIDATE_BOOLEAN))
   (function () {
     const btnEmailOtp = document.getElementById('btn-email-otp');
     const emailInput = document.getElementById('email');
@@ -232,3 +232,5 @@
 </script>
 
 @endsection
+
+
