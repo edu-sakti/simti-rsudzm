@@ -29,13 +29,13 @@
             <div class="row g-2">
                 <div class="col-6">
                     <div class="input-group">
-                        <input type="number" min="0" name="masa_kerja_tahun" class="form-control" value="{{ old('masa_kerja_tahun', $defaults['masa_kerja_tahun'] ?? '') }}" placeholder="0">
+                        <input type="number" min="0" name="tahun" class="form-control" value="{{ old('tahun', $defaults['tahun'] ?? '') }}" placeholder="0">
                         <span class="input-group-text">Tahun</span>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="input-group">
-                        <input type="number" min="0" max="11" name="masa_kerja_bulan" class="form-control" value="{{ old('masa_kerja_bulan', $defaults['masa_kerja_bulan'] ?? '') }}" placeholder="0">
+                        <input type="number" min="0" max="11" name="bulan" class="form-control" value="{{ old('bulan', $defaults['bulan'] ?? '') }}" placeholder="0">
                         <span class="input-group-text">Bulan</span>
                     </div>
                 </div>
@@ -57,32 +57,63 @@
 
         <div class="col-12">
             <label class="form-label">Alasan Cuti</label>
-            <textarea name="alasan_cuti" class="form-control" rows="3" placeholder="Masukkan alasan cuti">{{ old('alasan_cuti', $defaults['alasan_cuti'] ?? '') }}</textarea>
+            <textarea name="alasan" class="form-control" rows="3" placeholder="Masukkan alasan cuti">{{ old('alasan', $defaults['alasan'] ?? '') }}</textarea>
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Selama (Hari)</label>
-            <input type="number" min="1" name="lama_hari" id="lama_hari" class="form-control" value="{{ old('lama_hari', $defaults['lama_hari'] ?? '') }}" placeholder="Masukkan jumlah hari">
+            <input type="number" min="1" name="hari" id="hari" class="form-control" value="{{ old('hari', $defaults['hari'] ?? '') }}" placeholder="Masukkan jumlah hari">
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Mulai Tanggal</label>
-            <input type="date" name="mulai_tanggal" id="mulai_tanggal" class="form-control" value="{{ old('mulai_tanggal', $defaults['mulai_tanggal'] ?? '') }}">
+            <input type="date" name="tgl_mulai" id="tgl_mulai" class="form-control" value="{{ old('tgl_mulai', $defaults['tgl_mulai'] ?? '') }}">
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Sampai Tanggal</label>
-            <input type="date" name="sampai_tanggal" id="sampai_tanggal" class="form-control" value="{{ old('sampai_tanggal', $defaults['sampai_tanggal'] ?? '') }}">
+            <input type="date" name="selesai" id="selesai" class="form-control" value="{{ old('selesai', $defaults['selesai'] ?? '') }}">
         </div>
 
         <div class="col-md-4">
             <label class="form-label">Telp</label>
-            <input type="text" class="form-control" value="{{ old('telp', $defaults['telp'] ?? '-') }}" readonly>
+            <input type="text" name="telp" class="form-control" value="{{ old('telp', $defaults['telp'] ?? '-') }}" readonly>
         </div>
 
         <div class="col-12">
             <label class="form-label">Alamat Selama Menjalankan Cuti</label>
-            <textarea name="alamat_cuti" class="form-control" rows="3" placeholder="Masukkan alamat selama menjalankan cuti">{{ old('alamat_cuti', $defaults['alamat_cuti'] ?? '') }}</textarea>
+            <textarea name="alamat" class="form-control" rows="3" placeholder="Masukkan alamat selama menjalankan cuti">{{ old('alamat', $defaults['alamat'] ?? '') }}</textarea>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Tanggal Surat</label>
+            <input type="date" name="tgl_surat_input" id="tgl_surat_input" class="form-control" value="{{ old('tgl_surat_input', $defaults['tgl_surat'] ?? '') }}">
+            <input type="hidden" name="tgl_surat" id="tgl_surat" value="{{ old('tgl_surat') }}">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Bulan Surat</label>
+            <input type="text" name="bulan_surat" id="bulan_surat" class="form-control" value="{{ old('bulan_surat') }}" placeholder="Otomatis dari tanggal surat" readonly>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Tahun Surat</label>
+            <input type="text" name="tahun_surat" id="tahun_surat" class="form-control" value="{{ old('tahun_surat') }}" placeholder="Otomatis dari tanggal surat" readonly>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Atasan Langsung</label>
+            <input type="text" name="atasan_langsung" class="form-control" value="{{ old('atasan_langsung', $defaults['atasan_langsung'] ?? '') }}" placeholder="Masukkan nama atasan langsung">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Jabatan Atasan Langsung</label>
+            <input type="text" name="jbtn_atasan_langsung" class="form-control" value="{{ old('jbtn_atasan_langsung', $defaults['jbtn_atasan_langsung'] ?? '') }}" placeholder="Masukkan jabatan atasan langsung">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">NIP Atasan Langsung</label>
+            <input type="text" name="nip_atasan_langsung" class="form-control" value="{{ old('nip_atasan_langsung', $defaults['nip_atasan_langsung'] ?? '') }}" placeholder="Masukkan NIP atasan langsung">
         </div>
 
         <div class="col-12">
@@ -98,11 +129,19 @@
         const form = document.getElementById('form-surat-cuti');
         if (!form) return;
 
-        const lamaHariInput = form.querySelector('#lama_hari');
-        const mulaiTanggalInput = form.querySelector('#mulai_tanggal');
-        const sampaiTanggalInput = form.querySelector('#sampai_tanggal');
+        const lamaHariInput = form.querySelector('#hari');
+        const mulaiTanggalInput = form.querySelector('#tgl_mulai');
+        const sampaiTanggalInput = form.querySelector('#selesai');
+        const tanggalSuratInput = form.querySelector('#tgl_surat_input');
+        const tanggalSuratHidden = form.querySelector('#tgl_surat');
+        const bulanSuratInput = form.querySelector('#bulan_surat');
+        const tahunSuratInput = form.querySelector('#tahun_surat');
         if (!lamaHariInput || !mulaiTanggalInput || !sampaiTanggalInput) return;
         const holidayCache = new Map(); // year -> Set('YYYY-MM-DD')
+        const namaBulanIndonesia = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
 
         function isWeekend(date) {
             const day = date.getDay(); // 0=minggu, 6=sabtu
@@ -180,11 +219,33 @@
             sampaiTanggalInput.placeholder = '';
         }
 
+        function syncTanggalSuratParts() {
+            if (!tanggalSuratInput || !tanggalSuratHidden || !bulanSuratInput || !tahunSuratInput) {
+                return;
+            }
+
+            const tanggal = parseDate(tanggalSuratInput.value);
+            if (!tanggal) {
+                tanggalSuratHidden.value = '';
+                bulanSuratInput.value = '';
+                tahunSuratInput.value = '';
+                return;
+            }
+
+            tanggalSuratHidden.value = String(tanggal.getDate());
+            bulanSuratInput.value = namaBulanIndonesia[tanggal.getMonth()] ?? '';
+            tahunSuratInput.value = String(tanggal.getFullYear());
+        }
+
         lamaHariInput.addEventListener('input', calculateEndDate);
         mulaiTanggalInput.addEventListener('change', calculateEndDate);
+        if (tanggalSuratInput) {
+            tanggalSuratInput.addEventListener('change', syncTanggalSuratParts);
+        }
 
         if (lamaHariInput.value && mulaiTanggalInput.value && !sampaiTanggalInput.value) {
             calculateEndDate();
         }
+        syncTanggalSuratParts();
     })();
 </script>

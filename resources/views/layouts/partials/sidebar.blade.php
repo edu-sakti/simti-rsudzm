@@ -83,7 +83,6 @@
                     'header' => 'Pengguna',
                     'items' => [
                         ['type' => 'link', 'label' => 'Pengguna', 'icon' => 'users', 'url' => url('/pengguna'), 'patterns' => ['pengguna']],
-                        ['type' => 'link', 'label' => 'Peran', 'icon' => 'user-check', 'url' => url('/peran-pengguna'), 'patterns' => ['peran-pengguna']],
                     ],
                 ],
                 [
@@ -95,7 +94,6 @@
                         ['type' => 'link', 'label' => 'CCTV', 'icon' => 'video', 'url' => url('/cctv'), 'patterns' => ['cctv'], 'permission' => 'cctv'],
                         ['type' => 'link', 'label' => 'Ruangan', 'icon' => 'layout', 'url' => url('/ruangan'), 'patterns' => ['ruangan*'], 'permission' => 'ruangan'],
                         ['type' => 'link', 'label' => 'PJ Ruangan', 'icon' => 'user-check', 'url' => url('/pj-ruangan'), 'patterns' => ['pj-ruangan*'], 'permission' => 'pj_ruangan'],
-                        ['type' => 'link', 'label' => 'Peran', 'icon' => 'shield', 'url' => url('/roles'), 'patterns' => ['roles*'], 'permission' => 'roles'],
                     ],
                 ],
                 [
@@ -206,3 +204,4 @@
         </ul>
     </div>
 </nav>
+

@@ -28,7 +28,7 @@ class User extends Authenticatable
         'username',
         'email',
         'phone',
-        'role_id',
+        'role',
         'is_admin',
         'password',
     ];
@@ -55,11 +55,6 @@ class User extends Authenticatable
         ];
     }
 
-    public function role(): BelongsTo
-    {
-        return $this->belongsTo(Role::class, 'role_id');
-    }
-
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class, 'room_id', 'id');
@@ -67,7 +62,7 @@ class User extends Authenticatable
 
     public function getRoleKeyAttribute(): ?string
     {
-        $name = $this->role?->name;
+        $name = $this->role;
         if (!$name) {
             return null;
         }

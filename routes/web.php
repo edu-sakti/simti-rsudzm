@@ -22,7 +22,6 @@ use App\Models\IpAddr;
 use App\Models\Device;
 use App\Models\DeviceSpec;
 use App\Models\HelpdeskTicket;
-use App\Models\Role;
 
 if (!function_exists('ticket_token_encode')) {
     function ticket_token_encode(string $value): string
@@ -89,24 +88,26 @@ if (!function_exists('pj_ruangan_token_decode')) {
 if (!function_exists('role_maps')) {
     function role_maps(): array
     {
-        static $byKey = null;
-        static $byId = null;
-        if ($byKey === null || $byId === null) {
-            $byKey = [];
-            $byId = [];
-            foreach (Role::query()->get() as $role) {
-                $key = Str::slug($role->name, '_');
-                $byKey[$key] = $role->id;
-                $byId[$role->id] = $key;
-            }
+        $byKey = [
+            'manajemen' => 'Manajemen',
+            'kepala' => 'Kepala',
+            'petugas' => 'Petugas',
+            'petugas_tu' => 'Petugas TU',
+            'petugas_it' => 'Petugas IT',
+            'petugas_helpdesk' => 'Petugas Helpdesk',
+        ];
+
+        $byName = [];
+        foreach ($byKey as $key => $name) {
+            $byName[Str::lower($name)] = $key;
         }
 
-        return [$byKey, $byId];
+        return [$byKey, $byName];
     }
 }
 
 if (!function_exists('role_id_by_key')) {
-    function role_id_by_key(string $key): ?int
+    function role_id_by_key(string $key): ?string
     {
         [$byKey] = role_maps();
         return $byKey[$key] ?? null;
@@ -114,13 +115,13 @@ if (!function_exists('role_id_by_key')) {
 }
 
 if (!function_exists('role_key_from_id')) {
-    function role_key_from_id(?int $roleId): ?string
+    function role_key_from_id(?string $roleName): ?string
     {
-        if (!$roleId) {
+        if (!$roleName) {
             return null;
         }
-        [, $byId] = role_maps();
-        return $byId[$roleId] ?? null;
+        [, $byName] = role_maps();
+        return $byName[Str::lower($roleName)] ?? null;
     }
 }
 
@@ -393,7 +394,7 @@ Route::get('/pengajuan', function () {
     $user = auth()->user();
 
     $pegawai = DB::table('pegawai')->where('id', $user->id)->first();
-    $roleName = DB::table('roles')->where('id', $user->role_id)->value('name');
+    $roleName = (string) ($user->role ?? '');
     $ruanganName = DB::table('room_users as ru')
         ->leftJoin('rooms as r', 'r.id', '=', 'ru.room_id')
         ->where('ru.user_id', $user->id)
@@ -415,15 +416,19 @@ Route::get('/pengajuan', function () {
         'nama' => $pegawai->nama ?? $user->name ?? '',
         'jabatan' => $jabatanDefault,
         'nip' => '',
-        'masa_kerja_tahun' => '',
-        'masa_kerja_bulan' => '',
+        'tahun' => '',
+        'bulan' => '',
         'jenis_cuti' => '',
-        'alasan_cuti' => '',
-        'lama_hari' => '',
-        'mulai_tanggal' => '',
-        'sampai_tanggal' => '',
+        'alasan' => '',
+        'hari' => '',
+        'tgl_mulai' => '',
+        'selesai' => '',
         'telp' => $phoneDisplay ?: '-',
-        'alamat_cuti' => $pegawai->alamat ?? '',
+        'alamat' => $pegawai->alamat ?? '',
+        'tgl_surat' => now()->format('Y-m-d'),
+        'atasan_langsung' => '',
+        'jbtn_atasan_langsung' => '',
+        'nip_atasan_langsung' => '',
     ];
 
     return view('pengajuan.index', compact('suratCutiDefaults'));
@@ -433,7 +438,6 @@ Route::get('/pengajuan', function () {
 Route::get('/pengguna', function (Request $request) {
     $search = $request->query('q');
     $users = User::query()
-        ->with(['room', 'role'])
         ->when($search, function ($query, $search) {
             $query->where('name', 'like', "%{$search}%")
                   ->orWhere('username', 'like', "%{$search}%");
@@ -444,273 +448,6 @@ Route::get('/pengguna', function (Request $request) {
 
     return view('users.index', compact('users', 'search'));
 })->name('users.index')->middleware(['auth']);
-
-Route::get('/peran-pengguna', function (Request $request) {
-    $search = trim((string) $request->query('q', ''));
-
-    $peranPengguna = DB::table('users as u')
-        ->leftJoin('roles as r', 'r.id', '=', 'u.role_id')
-        ->leftJoin('room_users as ru', 'ru.user_id', '=', 'u.id')
-        ->leftJoin('rooms as rm', 'rm.id', '=', 'ru.room_id')
-        ->whereNotNull('u.role_id')
-        ->select([
-            'u.id',
-            'u.id as user_id',
-            'u.role_id',
-            'r.description as keterangan',
-            'u.name as user_name',
-            'u.username as user_username',
-            'r.name as role_name',
-            DB::raw("GROUP_CONCAT(DISTINCT rm.name ORDER BY rm.name SEPARATOR ', ') as room_names"),
-        ])
-        ->when($search !== '', function ($query) use ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('u.name', 'like', "%{$search}%")
-                    ->orWhere('u.username', 'like', "%{$search}%")
-                    ->orWhere('r.name', 'like', "%{$search}%")
-                    ->orWhere('r.description', 'like', "%{$search}%")
-                    ->orWhere('rm.name', 'like', "%{$search}%");
-            });
-        })
-        ->groupBy('u.id', 'u.role_id', 'r.description', 'u.name', 'u.username', 'r.name')
-        ->orderBy('u.id')
-        ->paginate(10)
-        ->withQueryString();
-
-    return view('peran.index', compact('peranPengguna', 'search'));
-})->name('peran.index')->middleware(['auth']);
-
-Route::get('/peran/create', function () {
-    $users = DB::table('users')
-        ->select('id', 'name', 'username')
-        ->whereNull('role_id')
-        ->orderBy('name')
-        ->get();
-
-    if ($users->isEmpty()) {
-        return redirect()
-            ->route('peran.index')
-            ->withErrors(['user_id' => 'Semua pengguna sudah memiliki peran. Silakan ubah lewat menu Edit.']);
-    }
-
-    $roles = DB::table('roles')
-        ->select('id', 'name')
-        ->where('name', '<>', 'Kepala Ruang')
-        ->orderBy('name')
-        ->get();
-
-    $rooms = DB::table('rooms')
-        ->select('id', 'name', 'room_id')
-        ->orderBy('name')
-        ->get();
-
-    return view('peran.create', compact('users', 'roles', 'rooms'));
-})->name('peran.create')->middleware(['auth']);
-
-Route::post('/peran', function (Request $request) {
-    $data = $request->validate([
-        'user_id' => ['required', 'integer', 'exists:users,id'],
-        'role_id' => ['required', 'integer', 'exists:roles,id'],
-    ]);
-
-    $existingUser = DB::table('users')
-        ->select('id', 'role_id')
-        ->where('id', $data['user_id'])
-        ->first();
-
-    if (!$existingUser) {
-        return back()->withErrors(['user_id' => 'Pengguna tidak ditemukan.'])->withInput();
-    }
-
-    if (!is_null($existingUser->role_id)) {
-        return redirect()
-            ->route('peran.edit', peran_token_encode((string) $existingUser->id))
-            ->withErrors(['user_id' => 'Pengguna sudah memiliki peran. Silakan ubah pada form edit.']);
-    }
-
-    $roleName = Str::slug(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')), '-');
-    $needsRoom = in_array($roleName, ['kepala', 'petugas'], true);
-    if ($needsRoom) {
-        $request->validate([
-            'room_id' => ['required', 'integer', 'exists:rooms,id'],
-        ]);
-    }
-
-    $updated = DB::table('users')
-        ->where('id', $data['user_id'])
-        ->update([
-            'role_id' => $data['role_id'],
-            'updated_at' => now(),
-        ]);
-
-    if (!$updated) {
-        return back()
-            ->withErrors(['user_id' => 'Pengguna sudah memiliki peran. Silakan gunakan menu Edit.'])
-            ->withInput();
-    }
-
-    $selectedRoomName = null;
-    if ($needsRoom) {
-        $roomId = (int) $request->input('room_id');
-        $selectedRoomName = (string) (DB::table('rooms')->where('id', $roomId)->value('name') ?? '');
-
-        DB::table('room_users')->where('user_id', $data['user_id'])->delete();
-        DB::table('room_users')->insert([
-            'user_id' => $data['user_id'],
-            'room_id' => $roomId,
-            'role' => $roleName,
-            'description' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    } else {
-        DB::table('room_users')->where('user_id', $data['user_id'])->delete();
-    }
-
-    $targetUser = User::find((int) $data['user_id']);
-    if ($targetUser) {
-        notify_user_role_whatsapp(
-            $targetUser,
-            'create',
-            (string) (DB::table('roles')->where('id', $data['role_id'])->value('name') ?? ''),
-            $selectedRoomName
-        );
-    }
-
-    return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil ditambahkan.');
-})->name('peran.store')->middleware(['auth']);
-
-Route::get('/peran/{id}/edit', function (int $id) {
-    return redirect()->route('peran.edit', peran_token_encode((string) $id));
-})->whereNumber('id')->middleware(['auth']);
-
-Route::get('/peran/{token}/edit', function (string $token) {
-    try {
-        $id = peran_token_decode($token);
-    } catch (\Throwable $e) {
-        abort(404);
-    }
-    $peran = DB::table('users as u')
-        ->leftJoin('roles as r', 'r.id', '=', 'u.role_id')
-        ->where('u.id', $id)
-        ->select([
-            'u.id',
-            'u.id as user_id',
-            'u.role_id',
-            'r.description as keterangan',
-        ])
-        ->first();
-
-    if (!$peran) {
-        abort(404);
-    }
-
-    $users = DB::table('users')
-        ->select('id', 'name', 'username')
-        ->orderBy('name')
-        ->get();
-
-    $roles = DB::table('roles')
-        ->select('id', 'name')
-        ->where('name', '<>', 'Kepala Ruang')
-        ->orderBy('name')
-        ->get();
-
-    $rooms = DB::table('rooms')
-        ->select('id', 'name', 'room_id')
-        ->orderBy('name')
-        ->get();
-    $selectedRoomId = null;
-    $roleName = Str::slug(trim((string) DB::table('roles')->where('id', $peran->role_id)->value('name')), '-');
-    if (in_array($roleName, ['kepala', 'petugas'], true)) {
-        $selectedRoomId = DB::table('room_users')
-            ->where('user_id', $peran->user_id)
-            ->where('role', $roleName)
-            ->value('room_id');
-    }
-
-    return view('peran.edit', compact('peran', 'users', 'roles', 'rooms', 'selectedRoomId', 'token'));
-})->name('peran.edit')->middleware(['auth']);
-
-Route::put('/peran/{id}', function (Request $request, string $id) {
-    $data = $request->validate([
-        'user_id' => ['required', 'integer', Rule::in([(int) $id])],
-        'role_id' => ['required', 'integer', 'exists:roles,id'],
-    ], [
-        'user_id.in' => 'Pengguna pada data ini tidak bisa diubah. Silakan edit peran pengguna yang sesuai.',
-    ]);
-
-    $roleName = Str::slug(trim((string) DB::table('roles')->where('id', $data['role_id'])->value('name')), '-');
-    $needsRoom = in_array($roleName, ['kepala', 'petugas'], true);
-    if ($needsRoom) {
-        $request->validate([
-            'room_id' => ['required', 'integer', 'exists:rooms,id'],
-        ]);
-    }
-
-    DB::table('users')
-        ->where('id', $id)
-        ->update([
-            'role_id' => $data['role_id'],
-            'updated_at' => now(),
-        ]);
-
-    $selectedRoomName = null;
-    if ($needsRoom) {
-        $roomId = (int) $request->input('room_id');
-        $selectedRoomName = (string) (DB::table('rooms')->where('id', $roomId)->value('name') ?? '');
-
-        DB::table('room_users')->where('user_id', (int) $id)->delete();
-        DB::table('room_users')->insert([
-            'user_id' => (int) $id,
-            'room_id' => $roomId,
-            'role' => $roleName,
-            'description' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    } else {
-        DB::table('room_users')->where('user_id', (int) $id)->delete();
-    }
-
-    $targetUser = User::find((int) $id);
-    if ($targetUser) {
-        notify_user_role_whatsapp(
-            $targetUser,
-            'update',
-            (string) (DB::table('roles')->where('id', $data['role_id'])->value('name') ?? ''),
-            $selectedRoomName
-        );
-    }
-
-    return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil diperbarui.');
-})->name('peran.update')->middleware(['auth']);
-
-Route::delete('/peran/{id}', function (string $id) {
-    $user = DB::table('users')
-        ->select('id', 'role_id')
-        ->where('id', $id)
-        ->first();
-
-    if (!$user) {
-        return redirect()->route('peran.index')->withErrors(['user_id' => 'Data pengguna tidak ditemukan.']);
-    }
-
-    if (is_null($user->role_id)) {
-        return redirect()->route('peran.index')->withErrors(['user_id' => 'Pengguna belum memiliki peran.']);
-    }
-
-    DB::table('users')
-        ->where('id', $id)
-        ->update([
-            'role_id' => null,
-            'updated_at' => now(),
-        ]);
-
-    DB::table('room_users')->where('user_id', $id)->delete();
-
-    return redirect()->route('peran.index')->with('success', 'Peran pengguna berhasil dihapus.');
-})->name('peran.destroy')->middleware(['auth']);
 
 Route::get('/pengguna/tambah-link', function (Request $request) {
     $code = bin2hex(random_bytes(16));
@@ -1064,7 +801,7 @@ Route::post('/pengguna/tambah/{kode}', function (Request $request, string $kode)
         }
     }
 
-    $data['role_id'] = null;
+    $data['role'] = null;
     $data['is_admin'] = false;
     unset($data['otp_code'], $data['email_otp_code'], $data['invite_code']);
     $data['is_verified'] = false;
@@ -1325,10 +1062,10 @@ Route::get('/pj-ruangan', function (Request $request) {
 })->name('rooms.pj')->middleware(['auth', 'permission:pj_ruangan,read']);
 
 Route::get('/pj-ruangan/tambah', function () {
-    $roleId = Role::where('name', 'Petugas IT')->value('id');
+    $roleName = role_id_by_key('petugas_it');
     $petugas = User::query()
-        ->when($roleId, function ($query, $roleId) {
-            $query->where('role_id', $roleId);
+        ->when($roleName, function ($query, $roleName) {
+            $query->where('role', $roleName);
         })
         ->orderBy('name')
         ->get();
@@ -1388,10 +1125,10 @@ Route::get('/pj-ruangan/{token}/edit', function (string $token) {
         abort(404);
     }
 
-    $roleId = Role::where('name', 'Petugas IT')->value('id');
+    $roleName = role_id_by_key('petugas_it');
     $petugas = User::query()
-        ->when($roleId, function ($query, $roleId) {
-            $query->where('role_id', $roleId);
+        ->when($roleName, function ($query, $roleName) {
+            $query->where('role', $roleName);
         })
         ->orderBy('name')
         ->get();
@@ -1515,81 +1252,6 @@ Route::delete('/jabatan/{id}', function (string $id) {
 })->name('jabatan.destroy')->middleware(['auth', 'permission:jabatan,delete']);
 
 // ---------------- Peran (Master Data) ----------------
-Route::get('/roles', function (Request $request) {
-    $search = $request->query('q');
-    $roles = DB::table('roles')
-        ->when($search, function ($query, $search) {
-            $query->where('name', 'like', "%{$search}%");
-        })
-        ->orderBy('name')
-        ->paginate(20)
-        ->withQueryString();
-
-    return view('roles.index', compact('roles', 'search'));
-})->name('roles.index')->middleware(['auth', 'permission:roles,read']);
-
-Route::get('/roles/create', function () {
-    return view('roles.create');
-})->name('roles.create')->middleware(['auth', 'permission:roles,create']);
-
-Route::post('/roles', function (Request $request) {
-    $data = $request->validate([
-        'name' => ['required', 'string', 'max:100', 'unique:roles,name'],
-        'description' => ['nullable', 'string'],
-    ], [
-        'name.required' => 'Nama role wajib diisi.',
-        'name.unique' => 'Nama role sudah ada, gunakan nama lain.',
-    ]);
-
-    DB::table('roles')->insert([
-        'name' => $data['name'],
-        'description' => $data['description'] ?? null,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    return redirect()->route('roles.index')->with('success', 'Peran berhasil ditambahkan.');
-})->name('roles.store')->middleware(['auth', 'permission:roles,create']);
-
-Route::get('/roles/{id}/edit', function (string $id) {
-    $role = DB::table('roles')->where('id', $id)->first();
-    if (!$role) {
-        abort(404);
-    }
-    return view('roles.edit', compact('role'));
-})->name('roles.edit')->middleware(['auth', 'permission:roles,update']);
-
-Route::put('/roles/{id}', function (Request $request, string $id) {
-    $role = DB::table('roles')->where('id', $id)->first();
-    if (!$role) {
-        abort(404);
-    }
-    $data = $request->validate([
-        'name' => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($id)],
-        'description' => ['nullable', 'string'],
-    ], [
-        'name.required' => 'Nama role wajib diisi.',
-        'name.unique' => 'Nama role sudah ada, gunakan nama lain.',
-    ]);
-
-    DB::table('roles')->where('id', $id)->update([
-        'name' => $data['name'],
-        'description' => $data['description'] ?? null,
-        'updated_at' => now(),
-    ]);
-
-    return redirect()->route('roles.index')->with('success', 'Peran berhasil diperbarui.');
-})->name('roles.update')->middleware(['auth', 'permission:roles,update']);
-
-Route::delete('/roles/{id}', function (string $id) {
-    $role = DB::table('roles')->where('id', $id)->first();
-    if (!$role) {
-        abort(404);
-    }
-    DB::table('roles')->where('id', $id)->delete();
-    return redirect()->route('roles.index')->with('success', 'Peran berhasil dihapus.');
-})->name('roles.destroy')->middleware(['auth', 'permission:roles,delete']);
-
 Route::get('/ruangan/tambah', function () use ($roomCategories) {
     return view('ruangan.create', ['categories' => $roomCategories]);
 })->name('rooms.create')->middleware(['auth', 'permission:ruangan,create']);
@@ -1987,10 +1649,10 @@ Route::get('/helpdesk/tambah-ticket', function () {
         ->select('id', 'name', 'room_id')
         ->orderBy('name')
         ->get();
-    $petugasItId = role_id_by_key('petugas_it');
+    $petugasItRole = role_id_by_key('petugas_it');
     $petugas = \App\Models\User::query()
         ->select('id', 'name')
-        ->when($petugasItId, fn ($q) => $q->where('role_id', $petugasItId))
+        ->when($petugasItRole, fn ($q) => $q->where('role', $petugasItRole))
         ->orderBy('name')
         ->get();
 
@@ -2081,10 +1743,10 @@ Route::post('/helpdesk/tambah-ticket', function (Request $request) {
     ]);
 
     if (!empty($validated['petugas_id'])) {
-        $petugasItId = role_id_by_key('petugas_it');
+        $petugasItRole = role_id_by_key('petugas_it');
         $petugas = User::select('id', 'phone')
             ->where('id', $validated['petugas_id'])
-            ->when($petugasItId, fn ($q) => $q->where('role_id', $petugasItId))
+            ->when($petugasItRole, fn ($q) => $q->where('role', $petugasItRole))
             ->first();
         if ($petugas && !empty($petugas->phone)) {
             $phone = preg_replace('/\D+/', '', $petugas->phone);
